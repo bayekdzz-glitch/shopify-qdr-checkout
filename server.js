@@ -67,7 +67,8 @@ app.get("/start", (req, res) => {
   if (!amount || !currency) return res.status(400).send("Parametres manquants.");
   if (!order_ref || !String(order_ref).trim()) order_ref = "cart-" + crypto.randomUUID();
   const sig = sign(buildSignedPayload({ amount, currency, orderRef: order_ref }));
-  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}`);
+  const items = req.query.items ? `&items=${encodeURIComponent(req.query.items)}` : "";
+  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}`);
 });
 
 app.get("/checkout", (req, res) => {
@@ -81,6 +82,34 @@ app.get("/config.js", (_req, res) => {
   res.type("application/javascript").send(
     `window.CHECKOUT_CONFIG = ${JSON.stringify({ sdkUrl: QDR_SDK_URL, apiBase: PUBLIC_BASE_URL })};`
   );
+});
+
+// Recupere team_id/app_id (constantes marchand) pour afficher le module carte des le chargement.
+// Une init "placeholder" est faite une seule fois puis mise en cache (session abandonnee, jamais debitee).
+let cachedSdk = null;
+async function getSdkIds() {
+  if (cachedSdk) return cachedSdk;
+  if (MOCK) { cachedSdk = { team_id: "team_mock123", app_id: "app_mock456" }; return cachedSdk; }
+  let host = "checkout.local";
+  try { host = new URL(PUBLIC_BASE_URL).hostname; } catch {}
+  const data = await callQdr("/v2/cc/sale3d/init", {
+    merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
+    transaction_unique_id: crypto.randomUUID(), amount: 1, currency: "EUR",
+    first_name: "Client", last_name: "Client", address: "", city: "", state: "", zip: "",
+    country: "FRA", user_phone: "", user_email: "checkout@" + host, user_ip: "0.0.0.0",
+    callback_url: `${PUBLIC_BASE_URL}/api/webhook`, redirect_url: `${PUBLIC_BASE_URL}/return`,
+  });
+  if (data.status === "success" && data.payload) {
+    cachedSdk = { team_id: data.payload.team_id, app_id: data.payload.app_id };
+  }
+  return cachedSdk;
+}
+app.get("/api/sdk", async (_req, res) => {
+  try {
+    const ids = await getSdkIds();
+    if (!ids) return res.status(502).json({ status: "error", message: "SDK indisponible" });
+    res.json({ status: "success", team_id: ids.team_id, app_id: ids.app_id });
+  } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
 });
 
 app.post("/api/init", async (req, res) => {
@@ -237,9 +266,9 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 <div class="paybox">
 <div class="paybox-head"><span class="dot"></span><span>Carte de credit</span><span class="brands"><span class="brand b-visa">VISA</span><span class="brand b-mc">MC</span><span class="brand b-amex">AMEX</span></span></div>
 <div class="paybox-body">
-<div id="card-ph">Renseignez votre e-mail, prenom, nom et pays ci-dessus pour afficher le paiement securise.</div>
+<div id="card-ph">Chargement du paiement securise…</div>
 <div id="card-container"></div>
-<div class="ff" id="holder-wrap" style="margin-top:12px;display:none"><input id="card_holder" placeholder=" "/><label>Nom sur la carte</label></div>
+<div class="ff" id="holder-wrap" style="margin-top:12px"><input id="card_holder" placeholder=" "/><label>Nom sur la carte</label></div>
 </div>
 </div>
 <div id="error" class="error"></div>
@@ -248,11 +277,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 </div>
 
 <div class="col-sum">
-<div class="sum-item">
-<div class="sum-thumb">🛍️<span class="sum-qty">1</span></div>
-<div><div class="nm">Commande __SHOP_NAME__</div><div class="sub">Paiement securise</div></div>
-<div class="pr" id="sum-price">—</div>
-</div>
+<div id="sum-items"></div>
 <div class="sumline"><span>Sous-total</span><span id="sum-sub">—</span></div>
 <div class="sumline"><span>Expedition</span><span>GRATUIT</span></div>
 <div class="sumtotal"><span>Total</span><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span></div>
@@ -265,47 +290,64 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 var qs=new URLSearchParams(location.search);
 var order={amount:qs.get('amount'),currency:qs.get('currency'),order_ref:qs.get('order_ref'),sig:qs.get('sig')};
 var disp=order.amount?(order.amount+' '+(order.currency||'')):'—';
-document.getElementById('sum-price').textContent=disp;
 document.getElementById('sum-sub').textContent=disp;
 document.getElementById('sum-cur').textContent=order.currency||'';
 document.getElementById('sum-total').textContent=order.amount||'—';
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function renderItems(){
+var html='';
+var raw=qs.get('items');
+if(raw){try{var arr=JSON.parse(decodeURIComponent(escape(atob(raw))));arr.forEach(function(it){
+var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>'):'🛍️';
+html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div><div class="nm">'+esc(it.title)+'</div>'+(it.variant?'<div class="sub">'+esc(it.variant)+'</div>':'')+'</div><div class="pr">'+esc(it.price)+' '+(order.currency||'')+'</div></div>';
+});}catch(e){}}
+if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div><div class="nm">Commande __SHOP_NAME__</div><div class="sub">Paiement securise</div></div><div class="pr">'+disp+'</div></div>';}
+document.getElementById('sum-items').innerHTML=html;
+}
+renderItems();
 
-var state={},inited=false,initing=false,ready=false;
+var sess=null,ready=false,cardReady=false;
 function v(id){return document.getElementById(id).value.trim();}
 function showError(m){document.getElementById('error').textContent=m;}
-function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on||!ready;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer maintenant';}
+function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer maintenant';}
 
 function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le module de paiement.'));};document.head.appendChild(s);});}
-function initSdk(){Checkout.init({containerId:'card-container',team_id:state.team_id,app_id:state.app_id,onReady:function(){ready=true;document.getElementById('pay-btn').disabled=false;document.getElementById('holder-wrap').style.display='block';},onCard:onCard,onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});}
-function onCard(cd){showError('');setPay(true);fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:state.transaction_unique_id,session_token:state.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})}).then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(state.transaction_unique_id);}).catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});}
 
-function tryInit(){
-if(inited||initing)return;
-var em=v('email'),fn=v('first_name'),ln=v('last_name'),co=v('country');
-if(!em||em.indexOf('@')<1||!fn||!ln||!co)return;
-initing=true;showError('');
-document.getElementById('card-ph').textContent='Chargement du paiement securise…';
-fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
-.then(function(r){return r.json();}).then(function(d){
-if(d.status!=='success'){throw new Error(d.message||'Paiement indisponible');}
-state=d;inited=true;
-document.getElementById('card-ph').style.display='none';
-return loadSdk().then(initSdk);
-}).catch(function(e){initing=false;document.getElementById('card-ph').textContent='Renseignez vos coordonnees pour afficher le paiement.';showError(e.message||'Erreur');});
+// 1) Au CHARGEMENT : on affiche le module carte tout de suite (team_id/app_id du marchand).
+fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
+if(d.status!=='success')throw new Error(d.message||'Module indisponible');
+return loadSdk().then(function(){
+Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,
+onReady:function(){cardReady=true;document.getElementById('card-ph').style.display='none';},
+onCard:onCard,
+onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
+});
+}).catch(function(e){document.getElementById('card-ph').textContent='Paiement momentanement indisponible. Reessayez.';showError(e.message||'');});
+
+// 3) Une fois la carte tokenisee : on finalise avec la session reelle.
+function onCard(cd){
+fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
+.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id);})
+.catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});
 }
 
-['email','first_name','last_name','country'].forEach(function(id){
-document.getElementById(id).addEventListener('change',tryInit);
-document.getElementById(id).addEventListener('blur',tryInit);
-});
-
+// 2) Au clic PAYER : on valide les infos, on cree la session reelle, puis on tokenise la carte.
 document.getElementById('pay-btn').addEventListener('click',function(){
-if(!ready){showError('Completez vos coordonnees ci-dessus.');return;}
+var em=v('email'),fn=v('first_name'),ln=v('last_name'),co=v('country');
+if(!em||em.indexOf('@')<1){showError('Adresse e-mail invalide.');return;}
+if(!fn||!ln){showError('Merci d\\'indiquer prenom et nom.');return;}
+if(!co){showError('Merci de choisir un pays.');return;}
+if(!cardReady){showError('Le module de paiement charge encore, patientez.');return;}
 if(!v('card_holder')){showError('Le nom sur la carte est requis.');return;}
-showError('');Checkout.submit('card-container');
+showError('');setPay(true);
+fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
+.then(function(r){return r.json();}).then(function(d){
+if(d.status!=='success')throw new Error(d.message||'Paiement refuse');
+sess=d;Checkout.submit('card-container');
+}).catch(function(e){setPay(false);showError(e.message||'Erreur');});
 });
 
-if(!order.amount||!order.sig){showError('Lien de paiement invalide.');}
+if(!order.amount||!order.sig){showError('Lien de paiement invalide.');document.getElementById('pay-btn').disabled=true;}
 })();
 </script></body></html>`;
 
