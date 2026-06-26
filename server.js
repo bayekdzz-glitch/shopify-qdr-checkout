@@ -14,6 +14,8 @@ const {
 } = process.env;
 
 const MOCK = String(MOCK_MODE).toLowerCase() === "true";
+// qdr6wy n'accepte que l'USD : on force la devise envoyee au PSP (l'affichage client reste libre).
+const QDR_CURRENCY = String(process.env.QDR_CURRENCY || "USD").toUpperCase();
 
 const app = express();
 app.use(express.json());
@@ -94,7 +96,7 @@ async function getSdkIds() {
   try { host = new URL(PUBLIC_BASE_URL).hostname; } catch {}
   const data = await callQdr("/v2/cc/sale3d/init", {
     merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
-    transaction_unique_id: crypto.randomUUID(), amount: 1, currency: "EUR",
+    transaction_unique_id: crypto.randomUUID(), amount: 1, currency: QDR_CURRENCY,
     first_name: "Client", last_name: "Client", address: "", city: "", state: "", zip: "",
     country: "FRA", user_phone: "", user_email: "checkout@" + host, user_ip: "0.0.0.0",
     callback_url: `${PUBLIC_BASE_URL}/api/webhook`, redirect_url: `${PUBLIC_BASE_URL}/return`,
@@ -121,7 +123,7 @@ app.post("/api/init", async (req, res) => {
     const c = customer || {};
     const initBody = {
       merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
-      transaction_unique_id, amount: Number(amount), currency,
+      transaction_unique_id, amount: Number(amount), currency: QDR_CURRENCY,
       first_name: c.first_name || "", last_name: c.last_name || "", address: c.address || "",
       city: c.city || "", state: c.state || "", zip: c.zip || "", country: c.country || "",
       user_phone: c.phone || "", user_email: c.email || "",
@@ -289,9 +291,10 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 (function(){
 var qs=new URLSearchParams(location.search);
 var order={amount:qs.get('amount'),currency:qs.get('currency'),order_ref:qs.get('order_ref'),sig:qs.get('sig')};
-var disp=order.amount?(order.amount+' '+(order.currency||'')):'—';
+var DCUR='EUR';
+var disp=order.amount?(order.amount+' '+DCUR):'—';
 document.getElementById('sum-sub').textContent=disp;
-document.getElementById('sum-cur').textContent=order.currency||'';
+document.getElementById('sum-cur').textContent=DCUR;
 document.getElementById('sum-total').textContent=order.amount||'—';
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function renderItems(){
@@ -299,7 +302,7 @@ var html='';
 var raw=qs.get('items');
 if(raw){try{var arr=JSON.parse(decodeURIComponent(escape(atob(raw))));arr.forEach(function(it){
 var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>'):'🛍️';
-html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div><div class="nm">'+esc(it.title)+'</div>'+(it.variant?'<div class="sub">'+esc(it.variant)+'</div>':'')+'</div><div class="pr">'+esc(it.price)+' '+(order.currency||'')+'</div></div>';
+html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div><div class="nm">'+esc(it.title)+'</div>'+(it.variant?'<div class="sub">'+esc(it.variant)+'</div>':'')+'</div><div class="pr">'+esc(it.price)+' '+DCUR+'</div></div>';
 });}catch(e){}}
 if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div><div class="nm">Commande __SHOP_NAME__</div><div class="sub">Paiement securise</div></div><div class="pr">'+disp+'</div></div>';}
 document.getElementById('sum-items').innerHTML=html;
