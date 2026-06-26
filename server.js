@@ -228,7 +228,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 .b-visa{background:#1a1f71}.b-mc{background:#eb001b}.b-amex{background:#2e77bc}
 .paybox-body{padding:16px}
 #card-container{min-height:46px}
-#card-container iframe{display:block;width:100%;border:none;height:180px!important;min-height:0}
+#card-container iframe{display:block;width:100%;border:none;height:150px!important;min-height:0}
 #card-ph{font-size:13px;color:#6b7280;padding:14px;border:1px dashed #cfcfcf;border-radius:8px;text-align:center}
 .error{font-size:13px;color:#d82c0d;min-height:18px;margin:10px 0}
 .btn{width:100%;padding:16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:18px}
