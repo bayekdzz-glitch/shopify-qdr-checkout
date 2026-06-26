@@ -160,82 +160,104 @@ const COUNTRY_OPTIONS = [
 
 const CHECKOUT_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>__SHOP_NAME__ — Paiement</title>
+<title>Paiement - __SHOP_NAME__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a1a1a}
-.wrap{display:flex;min-height:100vh;flex-wrap:wrap}
-.left{flex:1 1 520px;display:flex;justify-content:flex-end;border-right:1px solid #e6e6e6}
-.right{flex:1 1 420px;background:#fafafa;border-left:1px solid #e6e6e6}
-.left-inner{width:100%;max-width:520px;padding:40px 48px}
-.right-inner{width:100%;max-width:460px;padding:40px 48px}
-.brand{font-size:24px;font-weight:700;margin-bottom:28px}
-h2{font-size:17px;font-weight:600;margin:24px 0 12px}
-.row2{display:flex;gap:12px}.row2>div{flex:1}
-.fld{margin-bottom:12px;position:relative}
-label{display:block;font-size:12px;color:#6b7280;margin-bottom:6px}
-input,select{width:100%;padding:12px 13px;border:1px solid #c9cccf;border-radius:6px;font-size:15px;font-family:inherit;color:#1a1a1a;background:#fff;outline:none}
-input:focus,select:focus{border-color:#1a73e8;box-shadow:0 0 0 1px #1a73e8}
-input::placeholder{color:#9aa0a6}
-#card-container{min-height:46px}
-#card-container iframe{display:block;width:100%;border:none;min-height:210px}
-.pay-section{margin-top:8px}
+body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff}
+.topbar{border-bottom:1px solid #e3e3e3;padding:20px 0}
+.topbar-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.shop{font-size:24px;font-weight:700}
+.bag{color:#2563eb}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap}
+.col-form{flex:1 1 560px;padding:40px 56px 60px 24px}
+.col-sum{flex:1 1 440px;background:#fafafa;border-left:1px solid #e3e3e3;padding:40px 24px 60px 48px}
+@media(max-width:900px){.col-form,.col-sum{flex:1 1 100%;padding:28px 20px}.col-sum{order:-1;border-left:none;border-bottom:1px solid #e3e3e3}}
+h2{font-size:19px;font-weight:600;margin:28px 0 14px}
+.head-row{display:flex;align-items:baseline;justify-content:space-between;margin:28px 0 14px}
+.head-row h2{margin:0}
+.link{color:#2563eb;font-size:14px;text-decoration:none}
+.ff{position:relative;margin-bottom:12px}
+.ff input,.ff select{width:100%;height:54px;border:1px solid #898f94;border-radius:8px;background:#fff;font-size:15px;color:#1a1a1a;outline:none;padding:18px 13px 4px;font-family:inherit}
+.ff input::placeholder{color:transparent}
+.ff label{position:absolute;left:13px;top:17px;color:#6b7280;font-size:15px;pointer-events:none;transition:all .12s ease}
+.ff input:focus~label,.ff input:not(:placeholder-shown)~label,.ff.sel label{top:8px;font-size:11px}
+.ff input:focus,.ff select:focus{border-color:#1a1a1a;box-shadow:0 0 0 1px #1a1a1a}
+.ff .ic{position:absolute;right:13px;top:18px;color:#8a8a8a}
+.row2{display:flex;gap:12px}.row2>.ff{flex:1}
+.check{display:flex;align-items:center;gap:9px;font-size:14px;color:#454545;margin:4px 0 8px}
 .muted{font-size:13px;color:#6b7280;margin-bottom:12px}
-.error{font-size:13px;color:#d82c0d;min-height:18px;margin:8px 0}
-.btn{width:100%;padding:15px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:8px}
-.btn:disabled{opacity:.5;cursor:default}
-.summary-item{display:flex;align-items:center;gap:14px;margin-bottom:20px}
-.thumb{width:56px;height:56px;border-radius:8px;background:#ececec;border:1px solid #e0e0e0;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#9aa0a6}
-.summary-item .nm{font-size:14px;font-weight:500}
-.summary-item .pr{margin-left:auto;font-size:14px;font-weight:500}
-.sumline{display:flex;justify-content:space-between;font-size:14px;color:#454545;margin:8px 0}
-.sumtotal{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:600;border-top:1px solid #e0e0e0;margin-top:14px;padding-top:14px}
-.sumtotal .cur{font-size:12px;color:#6b7280;margin-right:6px;font-weight:400}
+.ship{border:1px solid #2563eb;background:#f4f7ff;border-radius:8px;padding:16px;display:flex;align-items:center;gap:12px;font-size:14px}
+.ship .dot{width:18px;height:18px;border-radius:50%;border:5px solid #2563eb}
+.ship .free{margin-left:auto;font-weight:500}
+.paybox{border:1px solid #2563eb;border-radius:8px;overflow:hidden}
+.paybox-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#f4f7ff;font-size:14px;font-weight:500}
+.paybox-head .dot{width:18px;height:18px;border-radius:50%;border:5px solid #2563eb}
+.brands{margin-left:auto;display:flex;gap:5px}
+.brand{font-size:10px;font-weight:700;color:#fff;border-radius:3px;padding:3px 5px;letter-spacing:.02em}
+.b-visa{background:#1a1f71}.b-mc{background:#eb001b}.b-amex{background:#2e77bc}
+.paybox-body{padding:16px}
+#card-container{min-height:46px}
+#card-container iframe{display:block;width:100%;border:none;min-height:200px}
+#card-ph{font-size:13px;color:#6b7280;padding:14px;border:1px dashed #cfcfcf;border-radius:8px;text-align:center}
+.error{font-size:13px;color:#d82c0d;min-height:18px;margin:10px 0}
+.btn{width:100%;padding:16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:18px}
+.btn:disabled{opacity:.55;cursor:default}
+.sum-item{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.sum-thumb{position:relative;width:60px;height:60px;border-radius:8px;background:#ececec;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.sum-qty{position:absolute;top:-8px;right:-8px;background:#5f5f5f;color:#fff;font-size:11px;min-width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.sum-item .nm{font-size:14px;font-weight:500}.sum-item .sub{font-size:12px;color:#6b7280}
+.sum-item .pr{margin-left:auto;font-size:14px;font-weight:500}
+.sumline{display:flex;justify-content:space-between;font-size:14px;color:#3a3a3a;margin:10px 0}
+.sumtotal{display:flex;justify-content:space-between;align-items:baseline;font-size:22px;font-weight:600;margin-top:14px}
+.sumtotal .cur{font-size:13px;color:#6b7280;margin-right:6px;font-weight:400}
 .secure{font-size:12px;color:#9aa0a6;text-align:center;margin-top:18px}
 .hidden{display:none}
-@media(max-width:850px){.left,.right{flex:1 1 100%;border:none}.right{order:-1;border-bottom:1px solid #e6e6e6}.left-inner,.right-inner{padding:28px 22px;max-width:100%}}
 </style></head><body>
+<div class="topbar"><div class="topbar-in"><div class="shop">__SHOP_NAME__</div><div class="bag">🛍️</div></div></div>
 <div class="wrap">
-<div class="right"><div class="right-inner">
-<div class="summary-item">
-<div class="thumb">🛍️</div>
-<div class="nm">Commande __SHOP_NAME__<div style="font-size:12px;color:#6b7280;font-weight:400">Paiement securise</div></div>
+
+<div class="col-form">
+<div class="head-row"><h2>Contact</h2></div>
+<div class="ff"><input id="email" type="email" placeholder=" "/><label>Adresse e-mail</label></div>
+
+<h2>Livraison</h2>
+<div class="ff sel"><select id="country">${COUNTRY_OPTIONS}</select><label>Pays / region</label></div>
+<div class="row2"><div class="ff"><input id="first_name" placeholder=" "/><label>Prenom</label></div><div class="ff"><input id="last_name" placeholder=" "/><label>Nom</label></div></div>
+<div class="ff"><input id="address" placeholder=" "/><label>Adresse (optionnel)</label></div>
+<div class="row2"><div class="ff"><input id="zip" placeholder=" "/><label>Code postal (optionnel)</label></div><div class="ff"><input id="city" placeholder=" "/><label>Ville (optionnel)</label></div></div>
+<div class="ff"><input id="phone" placeholder=" "/><label>Telephone (optionnel)</label></div>
+
+<h2>Mode d'expedition</h2>
+<div class="ship"><span class="dot"></span><span>Standard</span><span class="free">GRATUIT</span></div>
+
+<h2>Paiement</h2>
+<div class="muted">Toutes les transactions sont securisees et chiffrees.</div>
+<div class="paybox">
+<div class="paybox-head"><span class="dot"></span><span>Carte de credit</span><span class="brands"><span class="brand b-visa">VISA</span><span class="brand b-mc">MC</span><span class="brand b-amex">AMEX</span></span></div>
+<div class="paybox-body">
+<div id="card-ph">Renseignez votre e-mail, prenom, nom et pays ci-dessus pour afficher le paiement securise.</div>
+<div id="card-container"></div>
+<div class="ff" id="holder-wrap" style="margin-top:12px;display:none"><input id="card_holder" placeholder=" "/><label>Nom sur la carte</label></div>
+</div>
+</div>
+<div id="error" class="error"></div>
+<button id="pay-btn" class="btn" disabled><span id="pay-btn-text">Payer maintenant</span></button>
+<div class="secure">🔒 Toutes les transactions sont securisees · PCI DSS</div>
+</div>
+
+<div class="col-sum">
+<div class="sum-item">
+<div class="sum-thumb">🛍️<span class="sum-qty">1</span></div>
+<div><div class="nm">Commande __SHOP_NAME__</div><div class="sub">Paiement securise</div></div>
 <div class="pr" id="sum-price">—</div>
 </div>
 <div class="sumline"><span>Sous-total</span><span id="sum-sub">—</span></div>
-<div class="sumline"><span>Livraison</span><span>Calculee a l'etape suivante</span></div>
+<div class="sumline"><span>Expedition</span><span>GRATUIT</span></div>
 <div class="sumtotal"><span>Total</span><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span></div>
-</div></div>
-
-<div class="left"><div class="left-inner">
-<div class="brand">__SHOP_NAME__</div>
-
-<div id="step-info">
-<h2>Coordonnees</h2>
-<div class="fld"><input id="email" type="email" placeholder="Adresse e-mail"/></div>
-<h2>Livraison</h2>
-<div class="fld"><label>Pays / region</label><select id="country">${COUNTRY_OPTIONS}</select></div>
-<div class="row2"><div class="fld"><input id="first_name" type="text" placeholder="Prenom"/></div><div class="fld"><input id="last_name" type="text" placeholder="Nom"/></div></div>
-<div class="fld"><input id="address" type="text" placeholder="Adresse (optionnel)"/></div>
-<div class="row2"><div class="fld"><input id="zip" type="text" placeholder="Code postal (optionnel)"/></div><div class="fld"><input id="city" type="text" placeholder="Ville (optionnel)"/></div></div>
-<div class="fld"><input id="phone" type="text" placeholder="Telephone (optionnel)"/></div>
-<div id="error1" class="error"></div>
-<button id="continue-btn" class="btn"><span id="continue-text">Continuer vers le paiement</span></button>
 </div>
 
-<div id="step-card" class="hidden pay-section">
-<h2>Paiement</h2>
-<div class="muted">Toutes les transactions sont securisees et chiffrees.</div>
-<div class="fld"><input id="card_holder" type="text" placeholder="Nom du titulaire de la carte"/></div>
-<div class="fld"><div id="card-container"></div></div>
-<div id="error" class="error"></div>
-<button id="pay-btn" class="btn" disabled><span id="pay-btn-text">Payer maintenant</span></button>
-</div>
-
-<div class="secure">🔒 Securise · PCI DSS</div>
-</div></div>
 </div>
 <script src="/config.js"></script>
 <script>
@@ -247,52 +269,56 @@ document.getElementById('sum-price').textContent=disp;
 document.getElementById('sum-sub').textContent=disp;
 document.getElementById('sum-cur').textContent=order.currency||'';
 document.getElementById('sum-total').textContent=order.amount||'—';
-var state={};
-function err1(m){document.getElementById('error1').textContent=m;}
+
+var state={},inited=false,initing=false,ready=false;
+function v(id){return document.getElementById(id).value.trim();}
 function showError(m){document.getElementById('error').textContent=m;}
-function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer maintenant';}
+function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on||!ready;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer maintenant';}
 
-function loadSdk(){return new Promise(function(res,rej){var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le module de paiement.'));};document.head.appendChild(s);});}
-function initSdk(){Checkout.init({containerId:'card-container',team_id:state.team_id,app_id:state.app_id,onReady:function(){document.getElementById('pay-btn').disabled=false;},onCard:onCard,onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});}
-function onCard(cd){showError('');setPay(true);fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:state.transaction_unique_id,session_token:state.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:document.getElementById('card_holder').value.trim(),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})}).then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(state.transaction_unique_id);}).catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});}
+function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le module de paiement.'));};document.head.appendChild(s);});}
+function initSdk(){Checkout.init({containerId:'card-container',team_id:state.team_id,app_id:state.app_id,onReady:function(){ready=true;document.getElementById('pay-btn').disabled=false;document.getElementById('holder-wrap').style.display='block';},onCard:onCard,onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});}
+function onCard(cd){showError('');setPay(true);fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:state.transaction_unique_id,session_token:state.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})}).then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(state.transaction_unique_id);}).catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});}
 
-document.getElementById('continue-btn').addEventListener('click',function(){
-var v=function(id){return document.getElementById(id).value.trim();};
-var fn=v('first_name'),ln=v('last_name'),em=v('email'),co=v('country');
-if(!em||em.indexOf('@')<1){err1('Email invalide.');return;}
-if(!fn||!ln){err1('Merci d\\'indiquer prenom et nom.');return;}
-if(!co){err1('Merci de choisir un pays.');return;}
-err1('');
-var btn=document.getElementById('continue-btn');btn.disabled=true;document.getElementById('continue-text').textContent='Chargement…';
+function tryInit(){
+if(inited||initing)return;
+var em=v('email'),fn=v('first_name'),ln=v('last_name'),co=v('country');
+if(!em||em.indexOf('@')<1||!fn||!ln||!co)return;
+initing=true;showError('');
+document.getElementById('card-ph').textContent='Chargement du paiement securise…';
 fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
 .then(function(r){return r.json();}).then(function(d){
-if(d.status!=='success'){throw new Error(d.message||'Init refuse');}
-state=d;
-document.getElementById('continue-btn').classList.add('hidden');
-document.getElementById('step-card').classList.remove('hidden');
+if(d.status!=='success'){throw new Error(d.message||'Paiement indisponible');}
+state=d;inited=true;
+document.getElementById('card-ph').style.display='none';
 return loadSdk().then(initSdk);
-}).catch(function(e){btn.disabled=false;document.getElementById('continue-text').textContent='Continuer vers le paiement';err1(e.message||'Erreur');});
+}).catch(function(e){initing=false;document.getElementById('card-ph').textContent='Renseignez vos coordonnees pour afficher le paiement.';showError(e.message||'Erreur');});
+}
+
+['email','first_name','last_name','country'].forEach(function(id){
+document.getElementById(id).addEventListener('change',tryInit);
+document.getElementById(id).addEventListener('blur',tryInit);
 });
 
 document.getElementById('pay-btn').addEventListener('click',function(){
-if(!document.getElementById('card_holder').value.trim()){showError('Le nom du titulaire est requis.');return;}
+if(!ready){showError('Completez vos coordonnees ci-dessus.');return;}
+if(!v('card_holder')){showError('Le nom sur la carte est requis.');return;}
 showError('');Checkout.submit('card-container');
 });
 
-if(!order.amount||!order.sig){err1('Lien de paiement invalide.');document.getElementById('continue-btn').disabled=true;}
+if(!order.amount||!order.sig){showError('Lien de paiement invalide.');}
 })();
 </script></body></html>`;
 
 const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>__SHOP_NAME__ — Statut</title>
+<title>Statut - __SHOP_NAME__</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
 body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a}
 .card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:44px;max-width:440px;text-align:center}
 h1{font-size:20px;margin-bottom:10px}p{color:#6b7280;font-size:14px}
-.ok{color:#108043}.ko{color:#d82c0d}.pending{color:#1a73e8}
-.spinner{width:30px;height:30px;border:3px solid #e6e6e6;border-top-color:#1a1a1a;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 18px}
+.ok{color:#108043}.ko{color:#d82c0d}.pending{color:#2563eb}
+.spinner{width:30px;height:30px;border:3px solid #e6e6e6;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 18px}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style></head><body>
 <div class="card"><div class="spinner" id="spinner"></div><h1 id="title">Verification du paiement…</h1><p id="msg">Merci de patienter.</p></div>
