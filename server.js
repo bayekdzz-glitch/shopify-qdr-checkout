@@ -61,8 +61,10 @@ function mockQdr(pathname) {
 app.get("/health", (_req, res) => res.json({ ok: true, mock: MOCK }));
 
 app.get("/start", (req, res) => {
-  const { amount, currency, order_ref } = req.query;
-  if (!amount || !currency || !order_ref) return res.status(400).send("Parametres manquants.");
+  const { amount, currency } = req.query;
+  let order_ref = req.query.order_ref;
+  if (!amount || !currency) return res.status(400).send("Parametres manquants.");
+  if (!order_ref || !String(order_ref).trim()) order_ref = "cart-" + crypto.randomUUID();
   const sig = sign(buildSignedPayload({ amount, currency, orderRef: order_ref }));
   res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}`);
 });
@@ -158,25 +160,42 @@ body{font-family:system-ui,sans-serif;background:#f0f2f5;min-height:100vh;displa
 .checkout-header h1{font-size:20px;font-weight:600;color:#111}
 .amount{font-size:14px;color:#111;margin-top:6px;font-weight:600}
 .checkout-body{padding:28px 32px 32px}
-.field{margin-bottom:18px}
+.field{margin-bottom:16px}
+.row2{display:flex;gap:12px}
+.row2 .field{flex:1}
 .field label,.field-card label{display:block;font-size:12px;font-weight:500;color:#6b7280;letter-spacing:.03em;text-transform:uppercase;margin-bottom:6px}
 .field input{width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111;background:#fff;outline:none}
 .field input:focus{border-color:#6366f1}
 .field-card{margin-bottom:24px}
 #card-container{min-height:44px}
 #card-container iframe{display:block;width:100%;border:none;min-height:200px}
-.error{font-size:13px;color:#ef4444;min-height:20px;margin-bottom:16px}
-#pay-btn{width:100%;padding:13px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-#pay-btn:disabled{opacity:.5;cursor:default}
+.error{font-size:13px;color:#ef4444;min-height:20px;margin-bottom:12px}
+.btn{width:100%;padding:13px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:disabled{opacity:.5;cursor:default}
 .secure-note{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:#9ca3af;margin-top:16px}
 </style></head><body>
 <div class="checkout-card">
 <div class="checkout-header"><div class="brand">My Brand</div><h1>Paiement securise</h1><div class="amount" id="amount-display">—</div></div>
 <div class="checkout-body">
+
+<div id="step-info">
+<div class="row2">
+<div class="field"><label>Prenom</label><input id="first_name" type="text" placeholder="Prenom"/></div>
+<div class="field"><label>Nom</label><input id="last_name" type="text" placeholder="Nom"/></div>
+</div>
+<div class="field"><label>Email</label><input id="email" type="email" placeholder="email@exemple.com"/></div>
+<div class="field"><label>Pays</label><input id="country" type="text" placeholder="France"/></div>
+<div id="error1" class="error"></div>
+<button id="continue-btn" class="btn"><span id="continue-text">Continuer vers le paiement</span></button>
+</div>
+
+<div id="step-card" style="display:none">
 <div class="field"><label>Nom du titulaire</label><input id="card_holder" type="text" placeholder="Nom sur la carte"/></div>
 <div class="field-card"><label>Details de la carte</label><div id="card-container"></div></div>
 <div id="error" class="error"></div>
-<button id="pay-btn" disabled><span id="pay-btn-text">Payer</span></button>
+<button id="pay-btn" class="btn" disabled><span id="pay-btn-text">Payer</span></button>
+</div>
+
 <div class="secure-note">Securise · PCI DSS</div>
 </div></div>
 <script src="/config.js"></script>
@@ -186,15 +205,41 @@ var qs=new URLSearchParams(location.search);
 var order={amount:qs.get('amount'),currency:qs.get('currency'),order_ref:qs.get('order_ref'),sig:qs.get('sig')};
 document.getElementById('amount-display').textContent=order.amount?(order.amount+' '+(order.currency||'')):'—';
 var state={};
+function err1(m){document.getElementById('error1').textContent=m;}
 function showError(m){document.getElementById('error').textContent=m;}
-function setLoading(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer';}
+function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer';}
+
 function loadSdk(){return new Promise(function(res,rej){var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le SDK de paiement.'));};document.head.appendChild(s);});}
-function init(){return fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{}})}).then(function(r){return r.json();}).then(function(d){if(d.status!=='success')throw new Error(d.message||'Init refuse');state=d;});}
-function initSdk(){Checkout.init({containerId:'card-container',team_id:state.team_id,app_id:state.app_id,onReady:function(){document.getElementById('pay-btn').disabled=false;},onCard:onCard,onError:function(e){setLoading(false);showError(e.message||'Erreur carte');}});}
-function onCard(cd){showError('');setLoading(true);fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:state.transaction_unique_id,session_token:state.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:document.getElementById('card_holder').value.trim(),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})}).then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(state.transaction_unique_id);}).catch(function(e){setLoading(false);showError(e.message||'Erreur de paiement');});}
-document.getElementById('pay-btn').addEventListener('click',function(){if(!document.getElementById('card_holder').value.trim()){showError('Le nom du titulaire est requis.');return;}showError('');Checkout.submit('card-container');});
-if(!order.amount||!order.sig){showError('Lien de paiement invalide.');return;}
-init().then(loadSdk).then(initSdk).catch(function(e){showError(e.message);});
+
+function initSdk(){Checkout.init({containerId:'card-container',team_id:state.team_id,app_id:state.app_id,onReady:function(){document.getElementById('pay-btn').disabled=false;},onCard:onCard,onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});}
+
+function onCard(cd){showError('');setPay(true);fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:state.transaction_unique_id,session_token:state.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:document.getElementById('card_holder').value.trim(),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})}).then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(state.transaction_unique_id);}).catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});}
+
+document.getElementById('continue-btn').addEventListener('click',function(){
+var fn=document.getElementById('first_name').value.trim();
+var ln=document.getElementById('last_name').value.trim();
+var em=document.getElementById('email').value.trim();
+var co=document.getElementById('country').value.trim();
+if(!fn||!ln||!em||!co){err1('Merci de remplir prenom, nom, email et pays.');return;}
+if(em.indexOf('@')<1){err1('Email invalide.');return;}
+err1('');
+var btn=document.getElementById('continue-btn');btn.disabled=true;document.getElementById('continue-text').textContent='Chargement…';
+fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{first_name:fn,last_name:ln,email:em,country:co}})})
+.then(function(r){return r.json();}).then(function(d){
+if(d.status!=='success'){throw new Error(d.message||'Init refuse');}
+state=d;
+document.getElementById('step-info').style.display='none';
+document.getElementById('step-card').style.display='block';
+return loadSdk().then(initSdk);
+}).catch(function(e){btn.disabled=false;document.getElementById('continue-text').textContent='Continuer vers le paiement';err1(e.message||'Erreur');});
+});
+
+document.getElementById('pay-btn').addEventListener('click',function(){
+if(!document.getElementById('card_holder').value.trim()){showError('Le nom du titulaire est requis.');return;}
+showError('');Checkout.submit('card-container');
+});
+
+if(!order.amount||!order.sig){err1('Lien de paiement invalide.');document.getElementById('continue-btn').disabled=true;}
 })();
 </script></body></html>`;
 
