@@ -1,0 +1,16 @@
+{
+  "name": "shopify-qdr-checkout",
+  "version": "1.0.0",
+  "description": "Page de paiement externe (qdr6wy sale3d) branchee sur Shopify",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
