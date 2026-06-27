@@ -358,6 +358,11 @@ const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Statut - __SHOP_NAME__</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','27340245992304204');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
 <style>
 body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a}
 .card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:44px;max-width:440px;text-align:center}
@@ -375,7 +380,7 @@ function done(t,m,cls){spinner.style.display='none';title.textContent=t;title.cl
 function poll(){if(!txn){return done('Reference manquante','Impossible de retrouver la transaction.','ko');}
 fetch('/api/status?txn='+encodeURIComponent(txn)).then(function(r){return r.json();}).then(function(d){
 var s=(d.status||'').toLowerCase();
-if(['success','approved','completed','paid'].includes(s))return done('Paiement reussi','Votre commande est confirmee. Merci !','ok');
+if(['success','approved','completed','paid'].includes(s)){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}return done('Paiement reussi','Votre commande est confirmee. Merci !','ok');}
 if(['declined','failed','error','rejected'].includes(s))return done('Paiement refuse','La transaction n a pas abouti.','ko');
 tries++;if(tries>20)return done('En cours de traitement','Vous recevrez une confirmation par email.','pending');
 setTimeout(poll,2000);}).catch(function(){setTimeout(poll,2000);});}
