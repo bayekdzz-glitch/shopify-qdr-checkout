@@ -8,7 +8,7 @@ const {
   QDR_SDK_URL = "https://api.qdr6wy.im/js/checkout.js",
   PUBLIC_BASE_URL = "http://localhost:3000",
   CHECKOUT_SIGNING_SECRET = "dev-secret",
-  SHOP_NAME = "My Store 2",
+  SHOP_NAME = "COZIYA®",
   PORT = 3000,
   MOCK_MODE = "false",
 } = process.env;
@@ -261,7 +261,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 <div class="ff"><input id="phone" placeholder=" "/><label>Telephone (optionnel)</label></div>
 
 <h2>Mode d'expedition</h2>
-<div class="ship"><span class="dot"></span><span>Standard</span><span class="free">GRATUIT</span></div>
+<div class="ship"><span class="dot"></span><span>🚚 DHL · Livraison en 2 jours ouvres</span><span class="free">GRATUIT</span></div>
 
 <h2>Paiement</h2>
 <div class="muted">Toutes les transactions sont securisees et chiffrees.</div>
