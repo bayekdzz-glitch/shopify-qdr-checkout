@@ -451,7 +451,7 @@ h1{font-size:20px;margin:0 0 10px}p{color:#6b7280;font-size:14px;margin:6px 0}
     <h2>Ajoutez un 2ᵉ matelas Coziya 🛏️</h2>
     <div class="price"><span id="up-price">39,99€</span> <s id="up-ref">69,99€</s></div>
     <span class="save" id="up-save">Économisez 30€</span>
-    <p class="sub">En 1 clic, sans ressaisir votre carte. Cette offre n'apparaît qu'ici et disparaît si vous quittez la page.</p>
+    <p class="sub">Cette offre n'apparaît qu'ici et disparaît si vous quittez la page.</p>
     <button class="btn btn-yes" id="up-yes">✅ Oui, j'en profite</button>
     <button class="btn btn-no" id="up-no">Non merci, continuer</button>
   </div>
