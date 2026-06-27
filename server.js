@@ -17,6 +17,11 @@ const MOCK = String(MOCK_MODE).toLowerCase() === "true";
 // qdr6wy n'accepte que l'USD : on force la devise envoyee au PSP (l'affichage client reste libre).
 const QDR_CURRENCY = String(process.env.QDR_CURRENCY || "USD").toUpperCase();
 
+// Upsell post-achat (1 clic, recharge la carte via son bill token, sans 3DS).
+const UPSELL_AMOUNT = Number(process.env.UPSELL_AMOUNT || 39.99);
+const UPSELL_REF_PRICE = Number(process.env.UPSELL_REF_PRICE || 69.99);
+const UPSELL_SAVE = (UPSELL_REF_PRICE - UPSELL_AMOUNT).toFixed(2);
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -55,8 +60,12 @@ function mockQdr(pathname) {
       status: "success", code: 0, message: "success (mock)" };
   }
   if (pathname.endsWith("/complete")) {
-    return { status: "pending", code: 0, message: "3DS required (mock)",
-      acs_url: `${PUBLIC_BASE_URL}/return?status=success&mock3ds=1` };
+    return { status: "success", code: 0, message: "success (mock)",
+      token: crypto.randomUUID() + crypto.randomUUID().slice(0, 4) };
+  }
+  if (pathname.endsWith("/sale/token")) {
+    return { status: "success", code: 0, message: "success (mock)",
+      payload: { transaction_status: "SUCCESS", token: crypto.randomUUID() } };
   }
   return { status: "error", message: "mock: route inconnue" };
 }
@@ -137,6 +146,12 @@ app.post("/api/init", async (req, res) => {
     transactions.set(transaction_unique_id, {
       orderRef: order_ref, amount: Number(amount), currency, status: "initiated",
       sessionToken: data.payload.session_token,
+      customer: {
+        first_name: c.first_name || "", last_name: c.last_name || "", email: c.email || "",
+        country: c.country || "", address: c.address || "", city: c.city || "",
+        state: c.state || "", zip: c.zip || "", phone: c.phone || "",
+      },
+      userIp: initBody.user_ip,
     });
     res.json({ status: "success", transaction_unique_id,
       session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
@@ -152,6 +167,8 @@ app.post("/api/complete", async (req, res) => {
     const data = await callQdr("/v2/cc/sale3d/complete", {
       session_token, card_token, encrypted_cvv, bin, last4, card_holder, card_exp_month, card_exp_year });
     txn.status = data.status || "unknown";
+    const bt = data.token || (data.payload && data.payload.token) || data.bill_token || null;
+    if (bt) txn.billToken = bt;
     transactions.set(transaction_unique_id, txn);
     const acsUrl = data.acs_url || data.acsUrl || data.redirect || (data.payload && data.payload.acs_url);
     res.json({ status: data.status, code: data.code, message: data.message, acs_url: acsUrl || null });
@@ -165,7 +182,12 @@ app.post("/api/webhook", async (req, res) => {
     // TODO SECURITE : verifier la signature/HMAC du webhook selon la doc qdr6wy avant de faire confiance.
     const id = payload.transaction_unique_id || payload.transactionUniqueId;
     const txn = id ? transactions.get(id) : null;
-    if (txn) { txn.status = payload.status || txn.status; transactions.set(id, txn); }
+    if (txn) {
+      txn.status = payload.status || txn.status;
+      const bt = payload.token || (payload.payload && payload.payload.token) || payload.bill_token || null;
+      if (bt) txn.billToken = bt;
+      transactions.set(id, txn);
+    }
     res.json({ received: true });
   } catch (e) { console.error("webhook error", e); res.status(200).json({ received: true }); }
 });
@@ -173,7 +195,45 @@ app.post("/api/webhook", async (req, res) => {
 app.get("/api/status", (req, res) => {
   const txn = transactions.get(req.query.txn);
   if (!txn) return res.status(404).json({ status: "unknown" });
-  res.json({ status: txn.status, amount: txn.amount, currency: txn.currency });
+  res.json({
+    status: txn.status, amount: txn.amount, currency: txn.currency,
+    upsell: !!txn.billToken && !txn.upsellDone,
+    upsellDone: !!txn.upsellDone,
+    upsellAmount: UPSELL_AMOUNT, upsellSave: UPSELL_SAVE, upsellRef: UPSELL_REF_PRICE,
+  });
+});
+
+// Upsell post-achat : recharge la carte deja utilisee (bill token) sans 3DS.
+app.post("/api/upsell", async (req, res) => {
+  try {
+    const id = (req.body || {}).txn;
+    const txn = transactions.get(id);
+    if (!txn) return res.status(404).json({ status: "error", message: "Transaction inconnue." });
+    const ok = ["success", "approved", "completed", "paid"].includes(String(txn.status || "").toLowerCase());
+    if (!ok) return res.status(400).json({ status: "error", message: "Paiement initial non confirme." });
+    if (!txn.billToken) return res.status(400).json({ status: "error", message: "Carte non reutilisable (token absent)." });
+    if (txn.upsellDone) return res.json({ status: "success", message: "Deja ajoute." });
+    const c = txn.customer || {};
+    const body = {
+      merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
+      amount: UPSELL_AMOUNT.toFixed(2), currency: QDR_CURRENCY,
+      first_name: c.first_name || "", last_name: c.last_name || "",
+      country: c.country || "", user_email: c.email || "",
+      address: c.address || "", city: c.city || "", state: c.state || "", zip: c.zip || "",
+      token: txn.billToken,
+      transaction_unique_id: crypto.randomUUID(),
+      user_ip: txn.userIp || req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip,
+    };
+    const data = await callQdr("/v2/cc/sale/token", body);
+    const s = String(data.status || "").toLowerCase();
+    const okPay = s === "success" || s === "approved" || data.code === 0
+      || (data.payload && String(data.payload.transaction_status || "").toUpperCase() === "SUCCESS");
+    if (okPay) {
+      txn.upsellDone = true; transactions.set(id, txn);
+      return res.json({ status: "success", message: "Upsell debite." });
+    }
+    return res.status(502).json({ status: "error", message: data.message || "Upsell refuse.", raw: data });
+  } catch (e) { console.error("upsell error", e); res.status(500).json({ status: "error", message: e.message }); }
 });
 
 app.listen(PORT, () => {
@@ -364,24 +424,68 @@ fbq('init','27340245992304204');fbq('track','PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
 <style>
-body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a}
-.card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:44px;max-width:440px;text-align:center}
-h1{font-size:20px;margin-bottom:10px}p{color:#6b7280;font-size:14px}
+body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a;margin:0;padding:20px}
+.card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:40px;max-width:460px;width:100%;text-align:center;box-sizing:border-box}
+h1{font-size:20px;margin:0 0 10px}p{color:#6b7280;font-size:14px;margin:6px 0}
 .ok{color:#108043}.ko{color:#d82c0d}.pending{color:#2563eb}
 .spinner{width:30px;height:30px;border:3px solid #e6e6e6;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 18px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.offer{display:none;margin-top:22px;border:2px dashed #2563eb;border-radius:14px;padding:22px;background:#f5f8ff;text-align:left}
+.offer .tag{display:inline-block;background:#2563eb;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;letter-spacing:.4px}
+.offer h2{font-size:18px;margin:12px 0 6px}
+.offer .price{font-size:26px;font-weight:700;color:#1a1a1a}
+.offer .price s{font-size:16px;color:#9aa1ab;font-weight:500;margin-left:8px}
+.offer .save{display:inline-block;background:#e7f6ec;color:#108043;font-weight:600;font-size:13px;padding:3px 10px;border-radius:6px;margin-top:6px}
+.offer .sub{color:#6b7280;font-size:13px;margin:10px 0 16px}
+.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:15px;border-radius:10px;font-weight:600;font-size:15px;border:none;cursor:pointer;margin-top:10px}
+.btn-yes{background:#2563eb;color:#fff}
+.btn-no{background:transparent;color:#6b7280;text-decoration:underline;font-weight:500;font-size:13px;padding:8px}
+.btn[disabled]{opacity:.6;cursor:default}
 </style></head><body>
-<div class="card"><div class="spinner" id="spinner"></div><h1 id="title">Verification du paiement…</h1><p id="msg">Merci de patienter.</p></div>
+<div class="card">
+  <div class="spinner" id="spinner"></div>
+  <h1 id="title">Verification du paiement…</h1>
+  <p id="msg">Merci de patienter.</p>
+  <div class="offer" id="offer">
+    <span class="tag">OFFRE UNIQUE — RIEN QUE POUR VOUS</span>
+    <h2>Ajoutez un 2ᵉ matelas Coziya 🛏️</h2>
+    <div class="price"><span id="up-price">39,99€</span> <s id="up-ref">69,99€</s></div>
+    <span class="save" id="up-save">Économisez 30€</span>
+    <p class="sub">En 1 clic, sans ressaisir votre carte. Cette offre n'apparaît qu'ici et disparaît si vous quittez la page.</p>
+    <button class="btn btn-yes" id="up-yes">✅ Oui, j'en profite</button>
+    <button class="btn btn-no" id="up-no">Non merci, continuer</button>
+  </div>
+</div>
 <script>
 (function(){
 var txn=new URLSearchParams(location.search).get('txn');
-var title=document.getElementById('title'),msg=document.getElementById('msg'),spinner=document.getElementById('spinner'),tries=0;
-function done(t,m,cls){spinner.style.display='none';title.textContent=t;title.className=cls;msg.textContent=m;}
+var title=document.getElementById('title'),msg=document.getElementById('msg'),spinner=document.getElementById('spinner'),offer=document.getElementById('offer'),tries=0;
+function fmt(n){return (Number(n).toFixed(2)).replace('.',',')+'€';}
+function done(t,m,cls){spinner.style.display='none';offer.style.display='none';title.textContent=t;title.className=cls;msg.textContent=m;}
+function showUpsell(d){
+  spinner.style.display='none';
+  title.textContent='Paiement réussi ✅';title.className='ok';
+  msg.textContent='Votre commande est confirmée. Merci !';
+  document.getElementById('up-price').textContent=fmt(d.upsellAmount);
+  document.getElementById('up-ref').textContent=fmt(d.upsellRef);
+  document.getElementById('up-save').textContent='Économisez '+fmt(d.upsellSave);
+  offer.style.display='block';
+  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmé.','ok');};
+  document.getElementById('up-yes').onclick=function(){
+    var y=document.getElementById('up-yes');y.disabled=true;y.textContent='Traitement…';
+    fetch('/api/upsell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({txn:txn})})
+    .then(function(r){return r.json();}).then(function(rr){
+      if(rr.status==='success'){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.upsellAmount)||0,currency:d.currency||'EUR'});}catch(e){}
+        done('C\\'est ajouté ! 🎉','Votre 2ᵉ matelas a été ajouté à votre commande. Merci !','ok');}
+      else{y.disabled=false;y.textContent='✅ Oui, j\\'en profite';msg.textContent='Offre indisponible pour le moment.';}
+    }).catch(function(){y.disabled=false;y.textContent='✅ Oui, j\\'en profite';msg.textContent='Une erreur est survenue, réessayez.';});
+  };
+}
 function poll(){if(!txn){return done('Reference manquante','Impossible de retrouver la transaction.','ko');}
 fetch('/api/status?txn='+encodeURIComponent(txn)).then(function(r){return r.json();}).then(function(d){
 var s=(d.status||'').toLowerCase();
-if(['success','approved','completed','paid'].includes(s)){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}return done('Paiement reussi','Votre commande est confirmee. Merci !','ok');}
-if(['declined','failed','error','rejected'].includes(s))return done('Paiement refuse','La transaction n a pas abouti.','ko');
+if(['success','approved','completed','paid'].includes(s)){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}if(d.upsell){return showUpsell(d);}return done('Paiement réussi','Votre commande est confirmée. Merci !','ok');}
+if(['declined','failed','error','rejected'].includes(s))return done('Paiement refusé','La transaction n a pas abouti.','ko');
 tries++;if(tries>20)return done('En cours de traitement','Vous recevrez une confirmation par email.','pending');
 setTimeout(poll,2000);}).catch(function(){setTimeout(poll,2000);});}
 poll();
