@@ -161,6 +161,7 @@ app.post("/api/init", async (req, res) => {
         state: c.state || "", zip: c.zip || "", phone: c.phone || "",
       },
       userIp: initBody.user_ip,
+      shop: shop || "",
     });
     res.json({ status: "success", transaction_unique_id,
       session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
@@ -206,7 +207,7 @@ app.get("/api/status", (req, res) => {
   if (!txn) return res.status(404).json({ status: "unknown" });
   res.json({
     status: txn.status, amount: txn.amount, currency: txn.currency,
-    upsell: !!txn.billToken && !txn.upsellDone,
+    upsell: !!txn.billToken && !txn.upsellDone && (!txn.shop || /coziya/i.test(txn.shop)),
     upsellDone: !!txn.upsellDone,
     upsellAmount: UPSELL_AMOUNT, upsellSave: UPSELL_SAVE, upsellRef: UPSELL_REF_PRICE,
   });
