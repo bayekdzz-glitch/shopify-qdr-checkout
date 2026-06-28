@@ -90,7 +90,11 @@ app.get("/start", (req, res) => {
 app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
-  res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, brand));
+  const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
+  const shipping = isEvent
+    ? "🎟️ E-Ticket · Livraison instantanée par e-mail"
+    : "🚚 DHL · Livraison en 2 jours ouvrés";
+  res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, brand).replace(/__SHIPPING__/g, shipping));
 });
 
 app.get("/return", (req, res) => {
@@ -331,7 +335,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 <div class="ff"><input id="phone" placeholder=" "/><label>Telephone (optionnel)</label></div>
 
 <h2>Mode d'expedition</h2>
-<div class="ship"><span class="dot"></span><span>🚚 DHL · Livraison en 2 jours ouvrés</span><span class="free">GRATUIT</span></div>
+<div class="ship"><span class="dot"></span><span>__SHIPPING__</span><span class="free">GRATUIT</span></div>
 
 <h2>Paiement</h2>
 <div class="muted">Toutes les transactions sont securisees et chiffrees.</div>
