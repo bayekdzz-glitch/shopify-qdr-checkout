@@ -34,6 +34,10 @@ function sign(payload) {
 function buildSignedPayload({ amount, currency, orderRef }) {
   return `${orderRef}|${amount}|${currency}`;
 }
+function sanitizeShop(s) {
+  if (!s) return "";
+  return String(s).replace(/[<>"`]/g, "").trim().slice(0, 40);
+}
 function verifySignature(q) {
   const { amount, currency, order_ref, sig } = q;
   if (!amount || !currency || !order_ref || !sig) return false;
@@ -79,15 +83,20 @@ app.get("/start", (req, res) => {
   if (!order_ref || !String(order_ref).trim()) order_ref = "cart-" + crypto.randomUUID();
   const sig = sign(buildSignedPayload({ amount, currency, orderRef: order_ref }));
   const items = req.query.items ? `&items=${encodeURIComponent(req.query.items)}` : "";
-  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}`);
+  const shop = req.query.shop ? `&shop=${encodeURIComponent(req.query.shop)}` : "";
+  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}${shop}`);
 });
 
 app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
-  res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, SHOP_NAME));
+  const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
+  res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, brand));
 });
 
-app.get("/return", (_req, res) => res.type("html").send(RETURN_HTML.replace(/__SHOP_NAME__/g, SHOP_NAME)));
+app.get("/return", (req, res) => {
+  const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
+  res.type("html").send(RETURN_HTML.replace(/__SHOP_NAME__/g, brand));
+});
 
 app.get("/config.js", (_req, res) => {
   res.type("application/javascript").send(
@@ -125,7 +134,7 @@ app.get("/api/sdk", async (_req, res) => {
 
 app.post("/api/init", async (req, res) => {
   try {
-    const { amount, currency, order_ref, sig, customer } = req.body || {};
+    const { amount, currency, order_ref, sig, customer, shop } = req.body || {};
     if (!verifySignature({ amount, currency, order_ref, sig }))
       return res.status(400).json({ status: "error", message: "Signature montant invalide." });
     const transaction_unique_id = crypto.randomUUID();
@@ -138,7 +147,7 @@ app.post("/api/init", async (req, res) => {
       user_phone: c.phone || "", user_email: c.email || "",
       user_ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip,
       callback_url: `${PUBLIC_BASE_URL}/api/webhook`,
-      redirect_url: `${PUBLIC_BASE_URL}/return?txn=${transaction_unique_id}`,
+      redirect_url: `${PUBLIC_BASE_URL}/return?txn=${transaction_unique_id}` + (shop ? `&shop=${encodeURIComponent(shop)}` : ""),
     };
     const data = await callQdr("/v2/cc/sale3d/init", initBody);
     if (data.status !== "success" || !data.payload)
@@ -350,7 +359,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 <script>
 (function(){
 var qs=new URLSearchParams(location.search);
-var order={amount:qs.get('amount'),currency:qs.get('currency'),order_ref:qs.get('order_ref'),sig:qs.get('sig')};
+var order={amount:qs.get('amount'),currency:qs.get('currency'),order_ref:qs.get('order_ref'),sig:qs.get('sig'),shop:qs.get('shop')};
 var DCUR='EUR';
 var disp=order.amount?(order.amount+' '+DCUR):'—';
 document.getElementById('sum-sub').textContent=disp;
@@ -390,7 +399,7 @@ onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
 // 3) Une fois la carte tokenisee : on finalise avec la session reelle.
 function onCard(cd){
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
-.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id);})
+.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop='+encodeURIComponent(order.shop)):'');})
 .catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});
 }
 
@@ -403,7 +412,7 @@ if(!co){showError('Merci de choisir un pays.');return;}
 if(!cardReady){showError('Le module de paiement charge encore, patientez.');return;}
 if(!v('card_holder')){showError('Le nom sur la carte est requis.');return;}
 showError('');setPay(true);
-fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
+fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,shop:order.shop,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
 .then(function(r){return r.json();}).then(function(d){
 if(d.status!=='success')throw new Error(d.message||'Paiement refuse');
 sess=d;Checkout.submit('card-container');
