@@ -85,7 +85,9 @@ app.get("/start", (req, res) => {
   const items = req.query.items ? `&items=${encodeURIComponent(req.query.items)}` : "";
   const shop = req.query.shop ? `&shop=${encodeURIComponent(req.query.shop)}` : "";
   const ship = req.query.ship ? `&ship=${encodeURIComponent(req.query.ship)}` : "";
-  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}${shop}${ship}`);
+  const logo = req.query.logo ? `&logo=${encodeURIComponent(req.query.logo)}` : "";
+  const title = req.query.title ? `&title=${encodeURIComponent(req.query.title)}` : "";
+  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}${shop}${ship}${logo}${title}`);
 });
 
 app.get("/checkout", (req, res) => {
@@ -96,7 +98,17 @@ app.get("/checkout", (req, res) => {
   const shipping = shipParam || (isEvent
     ? "🎟️ E-Ticket · Livraison instantanée par e-mail"
     : "🚚 DHL · Livraison en 2 jours ouvrés");
-  res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, brand).replace(/__SHIPPING__/g, shipping));
+  const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
+  const heading = titleParam || brand;
+  const logoRaw = req.query.logo ? String(req.query.logo).trim() : "";
+  const logo = /^https:\/\/[^\s"'<>]+$/i.test(logoRaw) ? logoRaw.slice(0, 400) : "";
+  const brandBlock = logo
+    ? `<img class="shoplogo" src="${logo}" alt="${heading}"/>`
+    : `<div class="shop">${heading}</div>`;
+  res.type("html").send(CHECKOUT_HTML
+    .replace(/__BRAND_BLOCK__/g, brandBlock)
+    .replace(/__SHOP_NAME__/g, heading)
+    .replace(/__SHIPPING__/g, shipping));
 });
 
 app.get("/return", (req, res) => {
@@ -276,6 +288,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff}
 .topbar{border-bottom:1px solid #e3e3e3;padding:20px 0}
 .topbar-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
 .shop{font-size:24px;font-weight:700}
+.shoplogo{max-height:42px;width:auto;display:block}
 .bag{color:#2563eb}
 .wrap{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap}
 .col-form{flex:1 1 560px;padding:40px 56px 60px 24px}
@@ -322,7 +335,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 .secure{font-size:12px;color:#9aa0a6;text-align:center;margin-top:18px}
 .hidden{display:none}
 </style></head><body>
-<div class="topbar"><div class="topbar-in"><div class="shop">__SHOP_NAME__</div><div class="bag">🛍️</div></div></div>
+<div class="topbar"><div class="topbar-in">__BRAND_BLOCK__<div class="bag">🛍️</div></div></div>
 <div class="wrap">
 
 <div class="col-form">
