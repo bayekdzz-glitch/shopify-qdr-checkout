@@ -84,16 +84,18 @@ app.get("/start", (req, res) => {
   const sig = sign(buildSignedPayload({ amount, currency, orderRef: order_ref }));
   const items = req.query.items ? `&items=${encodeURIComponent(req.query.items)}` : "";
   const shop = req.query.shop ? `&shop=${encodeURIComponent(req.query.shop)}` : "";
-  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}${shop}`);
+  const ship = req.query.ship ? `&ship=${encodeURIComponent(req.query.ship)}` : "";
+  res.redirect(`/checkout?amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&order_ref=${encodeURIComponent(order_ref)}&sig=${sig}${items}${shop}${ship}`);
 });
 
 app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
   const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
-  const shipping = isEvent
+  const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
+  const shipping = shipParam || (isEvent
     ? "🎟️ E-Ticket · Livraison instantanée par e-mail"
-    : "🚚 DHL · Livraison en 2 jours ouvrés";
+    : "🚚 DHL · Livraison en 2 jours ouvrés");
   res.type("html").send(CHECKOUT_HTML.replace(/__SHOP_NAME__/g, brand).replace(/__SHIPPING__/g, shipping));
 });
 
