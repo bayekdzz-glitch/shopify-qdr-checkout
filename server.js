@@ -94,7 +94,7 @@ app.get("/checkout", (req, res) => {
   const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
   const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const shipping = shipParam || (isEvent
-    ? "Livraison instantanée par e-mail"
+    ? "🎟️ E-Ticket · Livraison immédiate"
     : "Livraison en 2 jours ouvrés · Suivi inclus");
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
@@ -338,7 +338,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 .toggle-items{color:#3b82f6;font-size:13px;text-decoration:none}
 .sum-item{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .sum-thumb{position:relative;width:52px;height:52px;border-radius:6px;background:#edf2f7;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.sum-qty{position:absolute;top:-6px;right:-6px;background:#718096;color:#fff;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
+.sum-thumb .sum-qty{position:absolute;top:-6px;right:-6px;background:#718096;color:#fff;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
 .sum-name-wrap{flex:1}
 .sum-name{font-size:13px;font-weight:600;color:#2d3748}
 .sum-variant{font-size:11px;color:#718096;margin-top:1px}
@@ -390,7 +390,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
-        <div class="ship-box-left"><span class="ship-icon">🎟️</span><div class="ship-details"><span class="ship-name">__SHIPPING__</span></div></div>
+        <div class="ship-box-left"><span class="ship-icon">🎟️</span><div class="ship-details"><span class="ship-name" id="lang-shipping-name">__SHIPPING__</span></div></div>
         <span class="ship-price" id="lang-free1">Gratuit</span>
       </div>
     </div>
@@ -432,7 +432,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
     <!-- Réassurance Adaptée (Billets / E-tickets) -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
-      <div class="trust-item"><span class="trust-icon">⚡</span><span id="lang-t2">Livraison instantanée par e-mail</span></div>
+      <div class="trust-item"><span class="trust-icon">⚡</span><span id="lang-t2">🎟️ E-Ticket · Livraison immédiate</span></div>
       <div class="trust-item"><span class="trust-icon">🎟️</span><span id="lang-t3">Billets officiels 100% garantis</span></div>
       <div class="trust-item"><span class="trust-icon">💬</span><span id="lang-t4">Support client 7j/7</span></div>
     </div>
@@ -463,10 +463,10 @@ document.getElementById('sum-items').innerHTML=html;
 renderItems();
 
 var translations = {
-  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Livraison instantanée par e-mail", t3: "Billets officiels 100% garantis", t4: "Support client 7j/7" },
-  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Consegna istantanea via e-mail", t3: "Biglietti ufficiali garantiti al 100%", t4: "Supporto clienti 7 giorni su 7" },
-  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Entrega instantánea por correo electrónico", t3: "Boletos oficiales 100% garantizados", t4: "Soporte al cliente 7d/7" },
-  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "Sofortige Lieferung per E-Mail", t3: "100% garantierte offizielle Tickets", t4: "Kundenservice 7 Tage die Woche" }
+  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "🎟️ E-Ticket · Livraison immédiate", t3: "Billets officiels 100% garantis", t4: "Support client 7j/7", isEventShip: "🎟️ E-Ticket · Livraison immédiate" },
+  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "🎟️ E-Ticket · Consegna immediata", t3: "Biglietti ufficiali garantiti al 100%", t4: "Supporto clienti 7 giorni su 7", isEventShip: "🎟️ E-Ticket · Consegna immediata" },
+  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "🎟️ E-Ticket · Entrega inmediata", t3: "Boletos oficiales 100% garantizados", t4: "Soporte al cliente 7d/7", isEventShip: "🎟️ E-Ticket · Entrega inmediata" },
+  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "🎟️ E-Ticket · Sofortige Lieferung", t3: "100% garantierte offizielle Tickets", t4: "Kundenservice 7 Tage die Woche", isEventShip: "🎟️ E-Ticket · Sofortige Lieferung" }
 };
 
 function detectUserLanguage() {
@@ -504,7 +504,7 @@ if (t) {
   document.getElementById('lang-promo-ph').placeholder = t.promo;
   document.getElementById('lang-promo-btn').textContent = t.apply;
   document.getElementById('lang-sub').textContent = t.sub;
-  document.getElementById('lang-ship-line').textContent = t.shippingSum || "Livraison";
+  document.getElementById('lang-ship-line').textContent = "Livraison";
   document.getElementById('lang-free2').textContent = t.free;
   document.getElementById('lang-total-line').textContent = t.total;
   document.getElementById('lang-tax').textContent = t.tax;
@@ -512,6 +512,11 @@ if (t) {
   document.getElementById('lang-t2').textContent = t.t2;
   document.getElementById('lang-t3').textContent = t.t3;
   document.getElementById('lang-t4').textContent = t.t4;
+
+  var isEvent = /rock|event|billet|ticket/i.test(qs.get('shop') || "");
+  if(isEvent) {
+    document.getElementById('lang-shipping-name').textContent = t.isEventShip;
+  }
 }
 
 var sess=null,ready=false,cardReady=false;
