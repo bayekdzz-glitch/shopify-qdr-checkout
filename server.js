@@ -94,15 +94,15 @@ app.get("/checkout", (req, res) => {
   const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
   const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const shipping = shipParam || (isEvent
-    ? "🎟️ E-Ticket · Livraison instantanée par e-mail"
-    : "🚚 DHL · Livraison en 2 jours ouvrés");
+    ? "Livraison instantanée par e-mail"
+    : "Livraison en 2 jours ouvrés · Suivi inclus");
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
   const logoRaw = req.query.logo ? String(req.query.logo).trim() : "";
   const logo = /^https:\/\/[^\s"'<>]+$/i.test(logoRaw) ? logoRaw.slice(0, 400) : "";
   const brandBlock = logo
     ? `<img class="shoplogo" src="${logo}" alt="${heading}"/>`
-    : `<div class="shop">${heading}</div>`;
+    : `<div class="logo-circle">${heading.slice(0,1).toUpperCase()}</div><span class="shop-name-text">${heading}</span>`;
   res.type("html").send(CHECKOUT_HTML
     .replace(/__BRAND_BLOCK__/g, brandBlock)
     .replace(/__SHOP_NAME__/g, heading)
@@ -178,7 +178,7 @@ app.post("/api/init", async (req, res) => {
       shop: shop || "",
     });
     res.json({ status: "success", transaction_unique_id,
-      session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
+      session_token: data.payload.session_token, team_id: d.payload.team_id, app_id: d.payload.app_id });
   } catch (e) { console.error("init error", e); res.status(500).json({ status: "error", message: e.message }); }
 });
 
@@ -296,97 +296,149 @@ try {
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff}
-.topbar{border-bottom:1px solid #e3e3e3;padding:20px 0}
-.topbar-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
-.shop{font-size:24px;font-weight:700}
-.shoplogo{max-height:42px;width:auto;display:block}
-.bag{color:#2563eb}
-.wrap{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap}
-.col-form{flex:1 1 560px;padding:40px 56px 60px 24px}
-.col-sum{flex:1 1 440px;background:#fafafa;border-left:1px solid #e3e3e3;padding:40px 24px 60px 48px}
-@media(max-width:900px){.col-form,.col-sum{flex:1 1 100%;padding:28px 20px}.col-sum{order:-1;border-left:none;border-bottom:1px solid #e3e3e3}}
-h2{font-size:19px;font-weight:600;margin:28px 0 14px}
-.head-row{display:flex;align-items:baseline;justify-content:space-between;margin:28px 0 14px}
-.head-row h2{margin:0}
-.link{color:#2563eb;font-size:14px;text-decoration:none}
-.ff{position:relative;margin-bottom:12px}
-.ff input,.ff select{width:100%;height:54px;border:1px solid #898f94;border-radius:8px;background:#fff;font-size:15px;color:#1a1a1a;outline:none;padding:18px 13px 4px;font-family:inherit}
-.ff input::placeholder{color:transparent}
-.ff label{position:absolute;left:13px;top:17px;color:#6b7280;font-size:15px;pointer-events:none;transition:all .12s ease}
-.ff input:focus~label,.ff input:not(:placeholder-shown)~label,.ff.sel label{top:8px;font-size:11px}
-.ff input:focus,.ff select:focus{border-color:#1a1a1a;box-shadow:0 0 0 1px #1a1a1a}
-.ff .ic{position:absolute;right:13px;top:18px;color:#8a8a8a}
-.row2{display:flex;gap:12px}.row2>.ff{flex:1}
-.check{display:flex;align-items:center;gap:9px;font-size:14px;color:#454545;margin:4px 0 8px}
-.muted{font-size:13px;color:#6b7280;margin-bottom:12px}
-.ship{border:1px solid #2563eb;background:#f4f7ff;border-radius:8px;padding:16px;display:flex;align-items:center;gap:12px;font-size:14px}
-.ship .dot{width:18px;height:18px;border-radius:50%;border:5px solid #2563eb;flex-shrink:0}
-.ship .free{margin-left:auto;font-weight:500}
-.paybox{border:1px solid #2563eb;border-radius:8px;overflow:hidden}
-.paybox-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#f4f7ff;font-size:14px;font-weight:500}
-.paybox-head .dot{width:18px;height:18px;border-radius:50%;border:5px solid #2563eb;flex-shrink:0}
-.brands{margin-left:auto;display:flex;gap:5px}
-.brand{font-size:10px;font-weight:700;color:#fff;border-radius:3px;padding:3px 5px;letter-spacing:.02em}
-.b-visa{background:#1a1f71}.b-mc{background:#eb001b}.b-amex{background:#2e77bc}
-.paybox-body{padding:16px}
-#card-container{min-height:46px}
-#card-container iframe{display:block;width:100%;border:none;height:150px!important;min-height:0}
-#card-ph{font-size:13px;color:#6b7280;padding:14px;border:1px dashed #cfcfcf;border-radius:8px;text-align:center}
-.error{font-size:13px;color:#d82c0d;min-height:18px;margin:10px 0}
-.btn{width:100%;padding:16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:18px}
-.btn:disabled{opacity:.55;cursor:default}
-.sum-item{display:flex;align-items:center;gap:14px;margin-bottom:22px}
-.sum-thumb{position:relative;width:60px;height:60px;border-radius:8px;background:#ececec;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.sum-qty{position:absolute;top:-8px;right:-8px;background:#5f5f5f;color:#fff;font-size:11px;min-width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.sum-item .nm{font-size:14px;font-weight:500}.sum-item .sub{font-size:12px;color:#6b7280}
-.sum-item .pr{margin-left:auto;font-size:14px;font-weight:500}
-.sumline{display:flex;justify-content:space-between;font-size:14px;color:#3a3a3a;margin:10px 0}
-.sumtotal{display:flex;justify-content:space-between;align-items:baseline;font-size:22px;font-weight:600;margin-top:14px}
-.sumtotal .cur{font-size:13px;color:#6b7280;margin-right:6px;font-weight:400}
-.secure{font-size:12px;color:#9aa0a6;text-align:center;margin-top:18px}
-.hidden{display:none}
+body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
+.topbar-in{max-width:1140px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.logo-area{display:flex;align-items:center;gap:12px}
+.logo-circle{width:36px;height:36px;background:#3b82f6;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.shop-name-text{font-size:18px;font-weight:700;color:#1a202c}
+.shoplogo{max-height:36px;width:auto;display:block}
+.secure-badge-top{margin-left:auto;color:#a0aec0;font-size:13px;display:flex;align-items:center;gap:6px}
+.wrap{max-width:1140px;margin:0 auto;display:flex;flex-wrap:wrap;padding:24px;gap:24px}
+.col-form{flex:1 1 640px;display:flex;flex-direction:column;gap:20px}
+.col-sum{flex:1 1 400px;display:flex;flex-direction:column;gap:16px}
+@media(max-width:900px){.wrap{padding:12px;gap:16px}.col-form,.col-sum{flex:1 1 100%}.col-sum{order:-1}}
+.block-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;position:relative}
+.block-title-row{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.step-num{width:28px;height:28px;background:#3b82f6;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.block-card h2{font-size:16px;font-weight:700;color:#1a202c;margin:0}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;color:#4a5568;margin-bottom:6px}
+.form-control{width:100%;height:46px;border:1px solid #cbd5e0;border-radius:6px;padding:0 14px;font-size:14px;color:#2d3748;outline:none;background:#fff;transition:border-color 0.15s}
+.form-control:focus{border-color:#3b82f6;box-shadow:0 0 0 1px #3b82f6}
+.form-control::placeholder{color:#a0aec0}
+.row-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:550px){.row-grid{grid-template-columns:1fr}}
+.ship-box{border:1px solid #cbd5e0;background:#fff;border-radius:8px;padding:16px;display:flex;align-items:center;justify-content:space-between;font-size:14px}
+.ship-box-left{display:flex;align-items:center;gap:12px}
+.ship-icon{font-size:20px}
+.ship-details{display:flex;flex-direction:column}
+.ship-name{font-weight:600;color:#1a202c}
+.card-brands-row{display:flex;gap:8px;margin-bottom:16px}
+.card-brand-img{height:22px;border:1px solid #e2e8f0;border-radius:4px;padding:2px 4px;background:#fff}
+#card-container{min-height:46px;margin-top:8px}
+#card-ph{font-size:13px;color:#718096;padding:16px;border:1px dashed #cbd5e0;border-radius:6px;text-align:center;background:#f7fafc}
+.btn-pay{width:100%;height:52px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 4px rgba(59,130,246,0.2);transition:background 0.15s}
+.btn-pay:hover:not(:disabled){background:#2563eb}
+.btn-pay:disabled{opacity:0.6;cursor:default;box-shadow:none}
+.secure-bottom-text{font-size:12px;color:#a0aec0;text-align:center;margin-top:14px}
+.sum-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px}
+.sum-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.sum-title{font-size:15px;font-weight:700;color:#1a202c}
+.toggle-items{color:#3b82f6;font-size:13px;text-decoration:none}
+.sum-item{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.sum-thumb{position:relative;width:52px;height:52px;border-radius:6px;background:#edf2f7;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sum-qty{position:absolute;top:-6px;right:-6px;background:#718096;color:#fff;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
+.sum-name-wrap{flex:1}
+.sum-name{font-size:13px;font-weight:600;color:#2d3748}
+.sum-variant{font-size:11px;color:#718096;margin-top:1px}
+.sum-price{font-size:13px;font-weight:600;color:#1a202c}
+.promo-row{display:flex;gap:10px;margin:16px 0;border-top:1px solid #edf2f7;border-bottom:1px solid #edf2f7;padding:16px 0}
+.promo-input{flex:1;height:38px;border:1px solid #cbd5e0;border-radius:6px;padding:0 12px;font-size:13px;outline:none}
+.promo-btn{height:38px;padding:0 16px;background:#f7fafc;border:1px solid #cbd5e0;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:#4a5568}
+.sum-line{display:flex;justify-content:space-between;font-size:13px;color:#4a5568;margin-bottom:10px}
+.sum-line-total{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:700;color:#1a202c;border-top:1px solid #edf2f7;padding-top:14px;margin-top:14px}
+.sum-line-total .tax-info{font-size:11px;color:#a0aec0;font-weight:400;display:block;text-align:right;margin-top:2px}
+.trust-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.trust-item{display:flex;align-items:center;gap:12px;font-size:13px;color:#4a5568}
+.trust-icon{font-size:16px;color:#718096;display:flex;align-items:center}
+.error-msg{color:#e53e3e;font-size:13px;font-weight:500;margin-top:10px;min-height:18px}
 </style></head><body>
-<div class="topbar"><div class="topbar-in">__BRAND_BLOCK__<div class="bag">🛍️</div></div></div>
+
+<div class="topbar"><div class="topbar-in"><div class="logo-area">__BRAND_BLOCK__</div><div class="secure-badge-top">🔒 <span id="lang-sec-top">Paiement sécurisé</span></div></div></div>
+
 <div class="wrap">
+  <div class="col-form">
+    <!-- 1. Coordonnées -->
+    <div class="block-card">
+      <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
+      <div class="form-group">
+        <label id="lang-email">Adresse e-mail</label>
+        <input id="email" type="email" class="form-control" placeholder="nom@exemple.com"/>
+      </div>
+    </div>
 
-<div class="col-form">
-<div class="head-row"><h2 id="lang-contact">Contact</h2></div>
-<div class="ff"><input id="email" type="email" placeholder=" "/><label id="lang-email">Adresse e-mail</label></div>
+    <!-- 2. Adresse de livraison -->
+    <div class="block-card">
+      <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
+      <div class="row-grid">
+        <div class="form-group"><label id="lang-fn">Prénom</label><input id="first_name" class="form-control" placeholder="Jean"/></div>
+        <div class="form-group"><label id="lang-ln">Nom</label><input id="last_name" class="form-control" placeholder="Dupont"/></div>
+      </div>
+      <div class="form-group"><label id="lang-addr">Adresse</label><input id="address" class="form-control" placeholder="12 rue de la Paix"/></div>
+      <div class="row-grid">
+        <div class="form-group"><label id="lang-zip">Code postal</label><input id="zip" class="form-control" placeholder="75001"/></div>
+        <div class="form-group"><label id="lang-city">Ville</label><input id="city" class="form-control" placeholder="Paris"/></div>
+      </div>
+      <div class="row-grid">
+        <div class="form-group"><label id="lang-country">Pays</label><select id="country" class="form-control">${COUNTRY_OPTIONS}</select></div>
+        <div class="form-group"><label id="lang-phone">Téléphone</label><input id="phone" class="form-control" placeholder="+33 6 00 00 00 00"/></div>
+      </div>
+    </div>
 
-<h2 id="lang-shipping-title">Livraison</h2>
-<div class="ff sel"><select id="country">${COUNTRY_OPTIONS}</select><label id="lang-country">Pays / region</label></div>
-<div class="row2"><div class="ff"><input id="first_name" placeholder=" "/><label id="lang-firstname">Prenom</label></div><div class="ff"><input id="last_name" placeholder=" "/><label id="lang-lastname">Nom</label></div></div>
-<div class="ff"><input id="address" placeholder=" "/><label id="lang-address">Adresse (optionnel)</label></div>
-<div class="row2"><div class="ff"><input id="zip" placeholder=" "/><label id="lang-zip">Code postal (optionnel)</label></div><div class="ff"><input id="city" placeholder=" "/><label id="lang-city">Ville (optionnel)</label></div></div>
-<div class="ff"><input id="phone" placeholder=" "/><label id="lang-phone">Telephone (optionnel)</label></div>
+    <!-- 3. Mode de livraison -->
+    <div class="block-card">
+      <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
+      <div class="ship-box">
+        <div class="ship-box-left"><span class="ship-icon">🚚</span><div class="ship-details"><span class="ship-name">__SHIPPING__</span></div></div>
+        <span class="ship-price" id="lang-free1">Gratuit</span>
+      </div>
+    </div>
 
-<h2 id="lang-method-title">Mode d'expedition</h2>
-<div class="ship"><span class="dot"></span><span>__SHIPPING__</span><span class="free" id="lang-free">GRATUIT</span></div>
+    <!-- 4. Informations de paiement -->
+    <div class="block-card">
+      <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
+      <div class="card-brands-row">
+        <img src="https://cdn-icons-png.flaticon.com/512/349/349221.png" class="card-brand-img" alt="Visa"/>
+        <img src="https://cdn-icons-png.flaticon.com/512/349/349228.png" class="card-brand-img" alt="Mastercard"/>
+        <img src="https://cdn-icons-png.flaticon.com/512/349/349230.png" class="card-brand-img" alt="Amex"/>
+      </div>
+      <div class="form-group"><label id="lang-holder">Titulaire de la carte</label><input id="card_holder" class="form-control" placeholder="Jean Dupont"/></div>
+      <div id="card-ph">Chargement du module de paiement sécurisé…</div>
+      <div id="card-container"></div>
+      <div id="error" class="error-msg"></div>
+      <button id="pay-btn" class="btn-pay" disabled><span id="pay-btn-text">Payer maintenant</span></button>
+      <div class="secure-bottom-text" id="lang-sec-bot">🔒 Paiement chiffré 256-bit · Vos données sont protégées</div>
+    </div>
+  </div>
 
-<h2 id="lang-payment-title">Paiement</h2>
-<div class="muted" id="lang-payment-sub">Toutes les transactions sont securisees et chiffrees.</div>
-<div class="paybox">
-<div class="paybox-head"><span class="dot"></span><span id="lang-card-title">Carte de credit</span><span class="brands"><span class="brand b-visa">VISA</span><span class="brand b-mc">MC</span><span class="brand b-amex">AMEX</span></span></div>
-<div class="paybox-body">
-<div id="card-ph">Chargement du paiement securise…</div>
-<div id="card-container"></div>
-<div class="ff" id="holder-wrap" style="margin-top:12px"><input id="card_holder" placeholder=" "/><label id="lang-holder">Nom sur la carte</label></div>
+  <div class="col-sum">
+    <!-- Récapitulatif -->
+    <div class="sum-box">
+      <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
+      <div id="sum-items"></div>
+      <div class="promo-row">
+        <input type="text" class="promo-input" id="lang-promo-ph" placeholder="Code de réduction"/>
+        <button class="promo-btn" id="lang-promo-btn">Appliquer</button>
+      </div>
+      <div class="sum-line"><span id="lang-sub">Sous-total</span><span id="sum-sub">—</span></div>
+      <div class="sum-line"><span id="lang-ship-line">Livraison</span><span id="lang-free2">Gratuit</span></div>
+      <div class="sum-line-total">
+        <span id="lang-total-line">Total</span>
+        <div style="text-align:right"><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span><span class="tax-info" id="lang-tax">Taxes incluses</span></div>
+      </div>
+    </div>
+
+    <!-- Réassurance -->
+    <div class="trust-box">
+      <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
+      <div class="trust-item"><span class="trust-icon">🔄</span><span id="lang-t2">Retours gratuits sous 30 jours</span></div>
+      <div class="trust-item"><span class="trust-icon">📦</span><span id="lang-t3">Expédition sous 24-48h ouvrées</span></div>
+      <div class="trust-item"><span class="trust-icon">💬</span><span id="lang-t4">Support client 7j/7</span></div>
+    </div>
+  </div>
 </div>
-</div>
-<div id="error" class="error"></div>
-<button id="pay-btn" class="btn" disabled><span id="pay-btn-text">Payer maintenant</span></button>
-<div class="secure" id="lang-secure">🔒 Toutes les transactions sont securisees · PCI DSS</div>
-</div>
 
-<div class="col-sum">
-<div id="sum-items"></div>
-<div class="sumline"><span id="lang-subtotal">Sous-total</span><span id="sum-sub">—</span></div>
-<div class="sumline"><span id="lang-shipping-sum">Expedition</span><span id="lang-free-sum">GRATUIT</span></div>
-<div class="sumtotal"><span id="lang-total">Total</span><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span></div>
-</div>
-
-</div>
 <script src="/config.js"></script>
 <script>
 (function(){
@@ -402,19 +454,19 @@ function renderItems(){
 var html='';
 var raw=qs.get('items');
 if(raw){try{var arr=JSON.parse(decodeURIComponent(escape(atob(raw))));arr.forEach(function(it){
-var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>'):'🛍️';
-html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div><div class="nm">'+esc(it.title)+'</div>'+(it.variant?'<div class="sub">'+esc(it.variant)+'</div>':'')+'</div><div class="pr">'+esc(it.price)+' '+DCUR+'</div></div>';
+var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>'):'🛍️';
+html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div class="sum-name-wrap"><div class="sum-name">'+esc(it.title)+'</div>'+(it.variant?'<div class="sum-variant">'+esc(it.variant)+'</div>':'')+'</div><div class="sum-price">'+esc(it.price)+' '+DCUR+'</div></div>';
 });}catch(e){}}
-if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div><div class="nm">Commande __SHOP_NAME__</div><div class="sub">Paiement securise</div></div><div class="pr">'+disp+'</div></div>';}
+if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div class="sum-name-wrap"><div class="sum-name">'+(qs.get('title')||'Commande __SHOP_NAME__')+'</div><div class="sum-variant">Paiement sécurisé</div></div><div class="sum-price">'+disp+'</div></div>';}
 document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
 var translations = {
-  fr: { contact: "Contact", email: "Adresse e-mail", shippingTitle: "Livraison", country: "Pays / région", firstname: "Prénom", lastname: "Nom", address: "Adresse (optionnel)", zip: "Code postal (optionnel)", city: "Ville (optionnel)", phone: "Téléphone (optionnel)", methodTitle: "Mode d'expédition", free: "GRATUIT", paymentTitle: "Paiement", paymentSub: "Toutes les transactions sont sécurisées et chiffrées.", cardTitle: "Carte de crédit", holder: "Nom sur la carte", btn: "Payer maintenant", secure: "🔒 Toutes les transactions sont sécurisées · PCI DSS", subtotal: "Sous-total", shippingSum: "Expédition", total: "Total" },
-  it: { contact: "Contatto", email: "Indirizzo e-mail", shippingTitle: "Spedizione", country: "Paese / regione", firstname: "Nome", lastname: "Cognome", address: "Indirizzo (opzionale)", zip: "Codice postale (opzionale)", city: "Città (opzionale)", phone: "Telefono (opzionale)", methodTitle: "Metodo di spedizione", free: "GRATUITO", paymentTitle: "Pagamento", paymentSub: "Tutte le transazioni sono protette e crittografate.", cardTitle: "Carta di credito", holder: "Nome sulla carta", btn: "Paga ora", secure: "🔒 Tutte le transazioni sono sicure · PCI DSS", subtotal: "Totale parziale", shippingSum: "Spedizione", total: "Totale" },
-  es: { contact: "Contacto", email: "Correo electrónico", shippingTitle: "Envío", country: "País / región", firstname: "Nombre", lastname: "Apellido", address: "Dirección (opcional)", zip: "Código postal (opcional)", city: "Ciudad (opcional)", phone: "Teléfono (opcional)", methodTitle: "Método de envío", free: "GRATIS", paymentTitle: "Pago", paymentSub: "Todas las transacciones son seguras y encriptadas.", cardTitle: "Tarjeta de crédito", holder: "Nombre en la tarjeta", btn: "Pagar ahora", secure: "🔒 Todas las transacciones son seguras · PCI DSS", subtotal: "Subtotal", shippingSum: "Envío", total: "Total" },
-  de: { contact: "Kontakt", email: "E-Mail-Adresse", shippingTitle: "Lieferung", country: "Land / Region", firstname: "Vorname", lastname: "Nachname", address: "Adresse (optional)", zip: "Postleitzahl (optional)", city: "Stadt (optional)", phone: "Telefon (optional)", methodTitle: "Versandart", free: "KOSTENLOS", paymentTitle: "Zahlung", paymentSub: "Alle Transaktionen sind sicher und verschlüsselt.", cardTitle: "Kreditkarte", holder: "Name auf der Karte", btn: "Jetzt bezahlen", secure: "🔒 Alle Transaktionen sind sicher · PCI DSS", subtotal: "Zwischensumme", shippingSum: "Versand", total: "Gesamtbetrag" }
+  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Retours gratuits sous 30 jours", t3: "Expédition sous 24-48h ouvrées", t4: "Support client 7j/7" },
+  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Resi gratuiti entro 30 giorni", t3: "Spedizione in 24-48 ore lavorative", t4: "Supporto clienti 7 giorni su 7" },
+  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Devoluciones gratuitas en 30 días", t3: "Envío en 24-48h laborables", t4: "Soporte al cliente 7d/7" },
+  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "Kostenlose Rückgabe innerhalb von 30 Tagen", t3: "Versand innerhalb von 24-48 Werktagen", t4: "Kundenservice 7 Tage die Woche" }
 };
 
 function detectUserLanguage() {
@@ -430,28 +482,36 @@ function detectUserLanguage() {
 var userLang = detectUserLanguage();
 var t = translations[userLang] || translations['fr'];
 if (t) {
-  document.getElementById('lang-contact').textContent = t.contact;
+  document.getElementById('lang-sec-top').textContent = t.secTop;
+  document.getElementById('lang-block1').textContent = t.b1;
   document.getElementById('lang-email').textContent = t.email;
-  document.getElementById('lang-shipping-title').textContent = t.shippingTitle;
-  document.getElementById('lang-country').textContent = t.country;
-  document.getElementById('lang-firstname').textContent = t.firstname;
-  document.getElementById('lang-lastname').textContent = t.lastname;
-  document.getElementById('lang-address').textContent = t.address;
+  document.getElementById('lang-block2').textContent = t.b2;
+  document.getElementById('lang-fn').textContent = t.fn;
+  document.getElementById('lang-ln').textContent = t.ln;
+  document.getElementById('lang-addr').textContent = t.addr;
   document.getElementById('lang-zip').textContent = t.zip;
   document.getElementById('lang-city').textContent = t.city;
+  document.getElementById('lang-country').textContent = t.country;
   document.getElementById('lang-phone').textContent = t.phone;
-  document.getElementById('lang-method-title').textContent = t.methodTitle;
-  document.getElementById('lang-free').textContent = t.free;
-  document.getElementById('lang-payment-title').textContent = t.paymentTitle;
-  document.getElementById('lang-payment-sub').textContent = t.paymentSub;
-  document.getElementById('lang-card-title').textContent = t.cardTitle;
+  document.getElementById('lang-block3').textContent = t.b3;
+  document.getElementById('lang-free1').textContent = t.free;
+  document.getElementById('lang-block4').textContent = t.b4;
   document.getElementById('lang-holder').textContent = t.holder;
   document.getElementById('pay-btn-text').textContent = t.btn;
-  document.getElementById('lang-secure').textContent = t.secure;
-  document.getElementById('lang-subtotal').textContent = t.subtotal;
-  document.getElementById('lang-shipping-sum').textContent = t.shippingSum;
-  document.getElementById('lang-free-sum').textContent = t.free;
-  document.getElementById('lang-total').textContent = t.total;
+  document.getElementById('lang-sec-bot').textContent = t.secBot;
+  document.getElementById('lang-recap').textContent = t.recap;
+  document.getElementById('lang-hide').textContent = t.hide;
+  document.getElementById('lang-promo-ph').placeholder = t.promo;
+  document.getElementById('lang-promo-btn').textContent = t.apply;
+  document.getElementById('lang-sub').textContent = t.sub;
+  document.getElementById('lang-ship-line').textContent = t.shippingSum || "Livraison";
+  document.getElementById('lang-free2').textContent = t.free;
+  document.getElementById('lang-total-line').textContent = t.total;
+  document.getElementById('lang-tax').textContent = t.tax;
+  document.getElementById('lang-t1').textContent = t.t1;
+  document.getElementById('lang-t2').textContent = t.t2;
+  document.getElementById('lang-t3').textContent = t.t3;
+  document.getElementById('lang-t4').textContent = t.t4;
 }
 
 var sess=null,ready=false,cardReady=false;
