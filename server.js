@@ -178,7 +178,7 @@ app.post("/api/init", async (req, res) => {
       shop: shop || "",
     });
     res.json({ status: "success", transaction_unique_id,
-      session_token: data.payload.session_token, team_id: d.payload.team_id, app_id: d.payload.app_id });
+      session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
   } catch (e) { console.error("init error", e); res.status(500).json({ status: "error", message: e.message }); }
 });
 
@@ -277,7 +277,6 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-<!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','27340245992304204');
@@ -292,8 +291,6 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
-<!-- End Facebook Pixel Code -->
-
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
@@ -359,7 +356,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 
 <div class="wrap">
   <div class="col-form">
-    <!-- 1. Coordonnées -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
       <div class="form-group">
@@ -368,7 +364,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 2. Adresse de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
       <div class="row-grid">
@@ -386,7 +381,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 3. Mode de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
@@ -395,7 +389,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 4. Informations de paiement -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
       <div class="card-brands-row">
@@ -407,13 +400,13 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       <div id="card-ph">Chargement du module de paiement sécurisé…</div>
       <div id="card-container"></div>
       <div id="error" class="error-msg"></div>
+      <div id="card-ph">Chargement du paiement sécurisé…</div>
       <button id="pay-btn" class="btn-pay" disabled><span id="pay-btn-text">Payer maintenant</span></button>
       <div class="secure-bottom-text" id="lang-sec-bot">🔒 Paiement chiffré 256-bit · Vos données sont protégées</div>
     </div>
   </div>
 
   <div class="col-sum">
-    <!-- Récapitulatif -->
     <div class="sum-box">
       <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
       <div id="sum-items"></div>
@@ -429,7 +422,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon">🔄</span><span id="lang-t2">Retours gratuits sous 30 jours</span></div>
@@ -521,10 +513,10 @@ function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;docum
 
 function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Error'));};document.head.appendChild(s);});}
 
-fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
-if(d.status!=='success')throw new Error(d.message);
+fetch('/api/sdk').then(function(r){return r.json();}).then(function(data){
+if(data.status!=='success')throw new Error(data.message);
 return loadSdk().then(function(){
-Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:userLang,
+Checkout.init({containerId:'card-container',team_id:data.team_id,app_id:data.app_id,language:userLang,
 onReady:function(){cardReady=true;document.getElementById('pay-btn').disabled=false;document.getElementById('card-ph').style.display='none';},
 onCard:onCard,
 onError:function(e){setPay(false);showError(e.message||'Error');}});
@@ -569,7 +561,7 @@ fbq('init','27340245992304204');fbq('track','PageView');
 body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a;margin:0;padding:20px}
 .card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:40px;max-width:460px;width:100%;text-align:center;box-sizing:border-box}
 h1{font-size:20px;margin:0 0 10px}p{color:#6b7280;font-size:14px;margin:6px 0}
-.ok{color:#108043}.ko{color:#d82c0d}.pending{color:#2563eb}
+.ok{color:#108043}.ko{color:#d82c0d}.pending fuse{color:#2563eb}
 .spinner{width:30px;height:30px;border:3px solid #e6e6e6;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 18px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .offer{display:none;margin-top:22px;border:2px dashed #2563eb;border-radius:14px;padding:22px;background:#f5f8ff;text-align:left}
