@@ -14,10 +14,8 @@ const {
 } = process.env;
 
 const MOCK = String(MOCK_MODE).toLowerCase() === "true";
-// qdr6wy n'accepte que l'USD : on force la devise envoyee au PSP (l'affichage client reste libre).
 const QDR_CURRENCY = String(process.env.QDR_CURRENCY || "USD").toUpperCase();
 
-// Upsell post-achat (1 clic, recharge la carte via son bill token, sans 3DS).
 const UPSELL_AMOUNT = Number(process.env.UPSELL_AMOUNT || 39.99);
 const UPSELL_REF_PRICE = Number(process.env.UPSELL_REF_PRICE || 69.99);
 const UPSELL_SAVE = (UPSELL_REF_PRICE - UPSELL_AMOUNT).toFixed(2);
@@ -122,8 +120,6 @@ app.get("/config.js", (_req, res) => {
   );
 });
 
-// Recupere team_id/app_id (constantes marchand) pour afficher le module carte des le chargement.
-// Une init "placeholder" est faite une seule fois puis mise en cache (session abandonnee, jamais debitee).
 let cachedSdk = null;
 async function getSdkIds() {
   if (cachedSdk) return cachedSdk;
@@ -207,7 +203,6 @@ app.post("/api/webhook", async (req, res) => {
   try {
     const payload = req.body || {};
     console.log("WEBHOOK qdr6wy:", JSON.stringify(payload));
-    // TODO SECURITE : verifier la signature/HMAC du webhook selon la doc qdr6wy avant de faire confiance.
     const id = payload.transaction_unique_id || payload.transactionUniqueId;
     const txn = id ? transactions.get(id) : null;
     if (txn) {
@@ -231,7 +226,6 @@ app.get("/api/status", (req, res) => {
   });
 });
 
-// Upsell post-achat : recharge la carte deja utilisee (bill token) sans 3DS.
 app.post("/api/upsell", async (req, res) => {
   try {
     const id = (req.body || {}).txn;
@@ -281,7 +275,23 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Paiement - __SHOP_NAME__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700&display=swap" rel="stylesheet"/>
+
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','27340245992304204');
+fbq('track','PageView');
+
+// Envoi dynamique du tracking à l'arrivée sur le checkout
+try {
+  var qs = new URLSearchParams(window.location.search);
+  var amountVal = qs.get('amount') ? Number(qs.get('amount')) : 0;
+  var currencyVal = qs.get('currency') || 'EUR';
+  fbq('track', 'AddToCart', { value: amountVal, currency: currencyVal });
+  fbq('track', 'InitiateCheckout', { value: amountVal, currency: currencyVal });
+} catch(e){}
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff}
@@ -405,25 +415,22 @@ function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;docum
 
 function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le module de paiement.'));};document.head.appendChild(s);});}
 
-// 1) Au CHARGEMENT : on affiche le module carte tout de suite (team_id/app_id du marchand).
 fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
 if(d.status!=='success')throw new Error(d.message||'Module indisponible');
 return loadSdk().then(function(){
-Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:(function(){var S=['en','fr','es','de','it','pt'];var p=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||'en'];for(var i=0;i<p.length;i++){var c=p[i].toLowerCase().split('-')[0];if(S.indexOf(c)!==-1)return c;}return'en';})(),
+Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,
 onReady:function(){cardReady=true;document.getElementById('pay-btn').disabled=false;document.getElementById('card-ph').style.display='none';},
 onCard:onCard,
 onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
 });
 }).catch(function(e){document.getElementById('card-ph').textContent='Paiement momentanement indisponible. Reessayez.';showError(e.message||'');});
 
-// 3) Une fois la carte tokenisee : on finalise avec la session reelle.
 function onCard(cd){
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
 .then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop='+encodeURIComponent(order.shop)):'');})
 .catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});
 }
 
-// 2) Au clic PAYER : on valide les infos, on cree la session reelle, puis on tokenise la carte.
 document.getElementById('pay-btn').addEventListener('click',function(){
 var em=v('email'),fn=v('first_name'),ln=v('last_name'),co=v('country');
 if(!em||em.indexOf('@')<1){showError('Adresse e-mail invalide.');return;}
@@ -446,7 +453,7 @@ if(!order.amount||!order.sig){showError('Lien de paiement invalide.');document.g
 const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Statut - __SHOP_NAME__</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600&display=swap" rel="stylesheet"/>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','27340245992304204');fbq('track','PageView');
