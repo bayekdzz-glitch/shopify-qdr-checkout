@@ -277,7 +277,6 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-<!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','27340245992304204');
@@ -292,8 +291,6 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
-<!-- End Facebook Pixel Code -->
-
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
@@ -340,7 +337,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 .sum-thumb{position:relative;width:52px;height:52px;border-radius:6px;background:#edf2f7;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .sum-qty{position:absolute;top:-6px;right:-6px;background:#718096;color:#fff;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
 .sum-name-wrap{flex:1}
-.sum-name{font-size:13px;font-weight:600;color:#2d3748}
+.sum-name(font-size:13px;font-weight:600;color:#2d3748}
 .sum-variant{font-size:11px;color:#718096;margin-top:1px}
 .sum-price{font-size:13px;font-weight:600;color:#1a202c}
 .promo-row{display:flex;gap:10px;margin:16px 0;border-top:1px solid #edf2f7;border-bottom:1px solid #edf2f7;padding:16px 0}
@@ -359,7 +356,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 
 <div class="wrap">
   <div class="col-form">
-    <!-- 1. Coordonnées -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
       <div class="form-group">
@@ -368,7 +364,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 2. Adresse de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
       <div class="row-grid">
@@ -386,7 +381,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 3. Mode de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
@@ -395,7 +389,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 4. Informations de paiement -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
       <div class="card-brands-row">
@@ -413,7 +406,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
   </div>
 
   <div class="col-sum">
-    <!-- Récapitulatif -->
     <div class="sum-box">
       <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
       <div id="sum-items"></div>
@@ -429,7 +421,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon">🔄</span><span id="lang-t2">Retours gratuits sous 30 jours</span></div>
@@ -533,7 +524,7 @@ onError:function(e){setPay(false);showError(e.message||'Error');}});
 
 function onCard(cd){
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
-.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop=${encodeURIComponent(order.shop)}'):'');})
+.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop='+encodeURIComponent(order.shop)):'');})
 .catch(function(e){setPay(false);showError(e.message);});
 }
 
@@ -612,7 +603,7 @@ function showUpsell(d){
   document.getElementById('up-ref').textContent=fmt(d.upsellRef);
   document.getElementById('up-save').textContent='Économisez '+fmt(d.upsellSave);
   offer.style.display='block';
-  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmé.','ok');};
+  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmed.','ok');};
   document.getElementById('up-yes').onclick=function(){
     var y=document.getElementById('up-yes');y.disabled=true;y.textContent='Traitement…';
     fetch('/api/upsell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({txn:txn})})
