@@ -320,7 +320,7 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 .row2{display:flex;gap:12px}.row2>.ff{flex:1}
 .check{display:flex;align-items:center;gap:9px;font-size:14px;color:#454545;margin:4px 0 8px}
 .muted{font-size:13px;color:#6b7280;margin-bottom:12px}
-.ship{border:1px solid #2563eb;background:#f4f7ff;border-radius:8px;padding:16px;display:flex;align-items:center;gap:12px;font-size:14px}
+.ship{border:1px solid #2563eb;background:#f4f7ff;border-radius:8px;padding:166px;display:flex;align-items:center;gap:12px;font-size:14px}
 .ship .dot{width:18px;height:18px;border-radius:50%;border:5px solid #2563eb}
 .ship .free{margin-left:auto;font-weight:500}
 .paybox{border:1px solid #2563eb;border-radius:8px;overflow:hidden}
@@ -351,39 +351,39 @@ h2{font-size:19px;font-weight:600;margin:28px 0 14px}
 <div class="wrap">
 
 <div class="col-form">
-<div class="head-row"><h2>Contact</h2></div>
-<div class="ff"><input id="email" type="email" placeholder=" "/><label>Adresse e-mail</label></div>
+<div class="head-row"><h2 id="lang-contact">Contact</h2></div>
+<div class="ff"><input id="email" type="email" placeholder=" "/><label id="lang-email">Adresse e-mail</label></div>
 
-<h2>Livraison</h2>
-<div class="ff sel"><select id="country">${COUNTRY_OPTIONS}</select><label>Pays / region</label></div>
-<div class="row2"><div class="ff"><input id="first_name" placeholder=" "/><label>Prenom</label></div><div class="ff"><input id="last_name" placeholder=" "/><label>Nom</label></div></div>
-<div class="ff"><input id="address" placeholder=" "/><label>Adresse (optionnel)</label></div>
-<div class="row2"><div class="ff"><input id="zip" placeholder=" "/><label>Code postal (optionnel)</label></div><div class="ff"><input id="city" placeholder=" "/><label>Ville (optionnel)</label></div></div>
-<div class="ff"><input id="phone" placeholder=" "/><label>Telephone (optionnel)</label></div>
+<h2 id="lang-shipping-title">Livraison</h2>
+<div class="ff sel"><select id="country">${COUNTRY_OPTIONS}</select><label id="lang-country">Pays / region</label></div>
+<div class="row2"><div class="ff"><input id="first_name" placeholder=" "/><label id="lang-firstname">Prenom</label></div><div class="ff"><input id="last_name" placeholder=" "/><label id="lang-lastname">Nom</label></div></div>
+<div class="ff"><input id="address" placeholder=" "/><label id="lang-address">Adresse (optionnel)</label></div>
+<div class="row2"><div class="ff"><input id="zip" placeholder=" "/><label id="lang-zip">Code postal (optionnel)</label></div><div class="ff"><input id="city" placeholder=" "/><label id="lang-city">Ville (optionnel)</label></div></div>
+<div class="ff"><input id="phone" placeholder=" "/><label id="lang-phone">Telephone (optionnel)</label></div>
 
-<h2>Mode d'expedition</h2>
-<div class="ship"><span class="dot"></span><span>__SHIPPING__</span><span class="free">GRATUIT</span></div>
+<h2 id="lang-method-title">Mode d'expedition</h2>
+<div class="ship"><span class="dot"></span><span>__SHIPPING__</span><span class="free" id="lang-free">GRATUIT</span></div>
 
-<h2>Paiement</h2>
-<div class="muted">Toutes les transactions sont securisees et chiffrees.</div>
+<h2 id="lang-payment-title">Paiement</h2>
+<div class="muted" id="lang-payment-sub">Toutes les transactions sont securisees et chiffrees.</div>
 <div class="paybox">
-<div class="paybox-head"><span class="dot"></span><span>Carte de credit</span><span class="brands"><span class="brand b-visa">VISA</span><span class="brand b-mc">MC</span><span class="brand b-amex">AMEX</span></span></div>
+<div class="paybox-head"><span class="dot"></span><span id="lang-card-title">Carte de credit</span><span class="brands"><span class="brand b-visa">VISA</span><span class="brand b-mc">MC</span><span class="brand b-amex">AMEX</span></span></div>
 <div class="paybox-body">
 <div id="card-ph">Chargement du paiement securise…</div>
 <div id="card-container"></div>
-<div class="ff" id="holder-wrap" style="margin-top:12px"><input id="card_holder" placeholder=" "/><label>Nom sur la carte</label></div>
+<div class="ff" id="holder-wrap" style="margin-top:12px"><input id="card_holder" placeholder=" "/><label id="lang-holder">Nom sur la carte</label></div>
 </div>
 </div>
 <div id="error" class="error"></div>
 <button id="pay-btn" class="btn" disabled><span id="pay-btn-text">Payer maintenant</span></button>
-<div class="secure">🔒 Toutes les transactions sont securisees · PCI DSS</div>
+<div class="secure" id="lang-secure">🔒 Toutes les transactions sont securisees · PCI DSS</div>
 </div>
 
 <div class="col-sum">
 <div id="sum-items"></div>
-<div class="sumline"><span>Sous-total</span><span id="sum-sub">—</span></div>
-<div class="sumline"><span>Expedition</span><span>GRATUIT</span></div>
-<div class="sumtotal"><span>Total</span><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span></div>
+<div class="sumline"><span id="lang-subtotal">Sous-total</span><span id="sum-sub">—</span></div>
+<div class="sumline"><span id="lang-shipping-sum">Expedition</span><span id="lang-free-sum">GRATUIT</span></div>
+<div class="sumtotal"><span id="lang-total">Total</span><span><span class="cur" id="sum-cur"></span><span id="sum-total">—</span></span></div>
 </div>
 
 </div>
@@ -410,52 +410,87 @@ document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
-// Fonction pour detecter automatiquement la bonne langue
+// Dictionnaire des traductions de l'interface complète
+var translations = {
+  fr: { contact: "Contact", email: "Adresse e-mail", shippingTitle: "Livraison", country: "Pays / région", firstname: "Prénom", lastname: "Nom", address: "Adresse (optionnel)", zip: "Code postal (optionnel)", city: "Ville (optionnel)", phone: "Téléphone (optionnel)", methodTitle: "Mode d'expédition", free: "GRATUIT", paymentTitle: "Paiement", paymentSub: "Toutes les transactions sont sécurisées et chiffrées.", cardTitle: "Carte de crédit", holder: "Nom sur la carte", btn: "Payer maintenant", secure: "🔒 Toutes les transactions sont sécurisées · PCI DSS", subtotal: "Sous-total", shippingSum: "Expédition", total: "Total" },
+  it: { contact: "Contatto", email: "Indirizzo e-mail", shippingTitle: "Spedizione", country: "Paese / regione", firstname: "Nome", lastname: "Cognome", address: "Indirizzo (opzionale)", zip: "Codice postale (opzionale)", city: "Città (opzionale)", phone: "Telefono (opzionale)", methodTitle: "Metodo di spedizione", free: "GRATUITO", paymentTitle: "Pagamento", paymentSub: "Tutte le transazioni sono protette e crittografate.", cardTitle: "Carta di credito", holder: "Nome sulla carta", btn: "Paga ora", secure: "🔒 Tutte le transazioni sono sicure · PCI DSS", subtotal: "Totale parziale", shippingSum: "Spedizione", total: "Totale" },
+  es: { contact: "Contacto", email: "Correo electrónico", shippingTitle: "Envío", country: "País / región", firstname: "Nombre", lastname: "Apellido", address: "Dirección (opcional)", zip: "Código postal (opcional)", city: "Ciudad (opcional)", phone: "Teléfono (opcional)", methodTitle: "Método de envío", free: "GRATIS", paymentTitle: "Pago", paymentSub: "Todas las transacciones son seguras y encriptadas.", cardTitle: "Tarjeta de crédito", holder: "Nombre en la tarjeta", btn: "Pagar ahora", secure: "🔒 Todas las transacciones son seguras · PCI DSS", subtotal: "Subtotal", shippingSum: "Envío", total: "Total" },
+  de: { contact: "Kontakt", email: "E-Mail-Adresse", shippingTitle: "Lieferung", country: "Land / Region", firstname: "Vorname", lastname: "Nachname", address: "Adresse (optional)", zip: "Postleitzahl (optional)", city: "Stadt (optional)", phone: "Telefon (optional)", methodTitle: "Versandart", free: "KOSTENLOS", paymentTitle: "Zahlung", paymentSub: "Alle Transaktionen sind sicher und verschlüsselt.", cardTitle: "Kreditkarte", holder: "Name auf der Karte", btn: "Jetzt bezahlen", secure: "🔒 Alle Transaktionen sind sicher · PCI DSS", subtotal: "Zwischensumme", shippingSum: "Versand", total: "Gesamtbetrag" }
+};
+
 function detectUserLanguage() {
   var lang = (navigator.language || navigator.userLanguage || 'en').slice(0, 2).toLowerCase();
   var supported = ['en', 'fr', 'es', 'de', 'it', 'pt'];
   return supported.indexOf(lang) > -1 ? lang : 'en';
 }
 
+// Application automatique des traductions sur les formulaires
+var userLang = detectUserLanguage();
+var t = translations[userLang] || translations['en'];
+if (t) {
+  document.getElementById('lang-contact').textContent = t.contact;
+  document.getElementById('lang-email').textContent = t.email;
+  document.getElementById('lang-shipping-title').textContent = t.shippingTitle;
+  document.getElementById('lang-country').textContent = t.country;
+  document.getElementById('lang-firstname').textContent = t.firstname;
+  document.getElementById('lang-lastname').textContent = t.lastname;
+  document.getElementById('lang-address').textContent = t.address;
+  document.getElementById('lang-zip').textContent = t.zip;
+  document.getElementById('lang-city').textContent = t.city;
+  document.getElementById('lang-phone').textContent = t.phone;
+  document.getElementById('lang-method-title').textContent = t.methodTitle;
+  document.getElementById('lang-free').textContent = t.free;
+  document.getElementById('lang-payment-title').textContent = t.paymentTitle;
+  document.getElementById('lang-payment-sub').textContent = t.paymentSub;
+  document.getElementById('lang-card-title').textContent = t.cardTitle;
+  document.getElementById('lang-holder').textContent = t.holder;
+  document.getElementById('pay-btn-text').textContent = t.btn;
+  document.getElementById('lang-secure').textContent = t.secure;
+  document.getElementById('lang-subtotal').textContent = t.subtotal;
+  document.getElementById('lang-shipping-sum').textContent = t.shippingSum;
+  document.getElementById('lang-free-sum').textContent = t.free;
+  document.getElementById('lang-total').textContent = t.total;
+}
+
 var sess=null,ready=false,cardReady=false;
 function v(id){return document.getElementById(id).value.trim();}
 function showError(m){document.getElementById('error').textContent=m;}
-function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'Traitement…':'Payer maintenant';}
+function setPay(on){var b=document.getElementById('pay-btn');b.disabled=on;document.getElementById('pay-btn-text').textContent=on?'…':(t ? t.btn : 'Payer maintenant');}
 
-function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Impossible de charger le module de paiement.'));};document.head.appendChild(s);});}
+function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)return res();var s=document.createElement('script');s.src=window.CHECKOUT_CONFIG.sdkUrl;s.onload=res;s.onerror=function(){rej(new Error('Error'));};document.head.appendChild(s);});}
 
 fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
-if(d.status!=='success')throw new Error(d.message||'Module indisponible');
+if(d.status!=='success')throw new Error(d.message);
 return loadSdk().then(function(){
-Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:detectUserLanguage(),
+Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:userLang,
 onReady:function(){cardReady=true;document.getElementById('pay-btn').disabled=false;document.getElementById('card-ph').style.display='none';},
 onCard:onCard,
-onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
+onError:function(e){setPay(false);showError(e.message||'Error');}});
 });
-}).catch(function(e){document.getElementById('card-ph').textContent='Paiement momentanement indisponible. Reessayez.';showError(e.message||'');});
+}).catch(function(e){document.getElementById('card-ph').textContent='…';});
 
 function onCard(cd){
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
 .then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop='+encodeURIComponent(order.shop)):'');})
-.catch(function(e){setPay(false);showError(e.message||'Erreur de paiement');});
+.catch(function(e){setPay(false);showError(e.message);});
 }
 
 document.getElementById('pay-btn').addEventListener('click',function(){
 var em=v('email'),fn=v('first_name'),ln=v('last_name'),co=v('country');
-if(!em||em.indexOf('@')<1){showError('Adresse e-mail invalide.');return;}
-if(!fn||!ln){showError('Merci d\\'indiquer prenom et nom.');return;}
-if(!co){showError('Merci de choisir un pays.');return;}
-if(!cardReady){showError('Le module de paiement charge encore, patientez.');return;}
-if(!v('card_holder')){showError('Le nom sur la carte est requis.');return;}
+if(!em||em.indexOf('@')<1){showError('Email error');return;}
+if(!fn||!ln){showError('Name error');return;}
+if(!co){showError('Country error');return;}
+if(!cardReady){showError('Loading…');return;}
+if(!v('card_holder')){showError('Holder error');return;}
 showError('');setPay(true);
 fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,shop:order.shop,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
 .then(function(r){return r.json();}).then(function(d){
-if(d.status!=='success')throw new Error(d.message||'Paiement refuse');
+if(d.status!=='success')throw new Error(d.message);
 sess=d;Checkout.submit('card-container');
-}).catch(function(e){setPay(false);showError(e.message||'Erreur');});
+}).catch(function(e){setPay(false);showError(e.message);});
 });
 
-if(!order.amount||!order.sig){showError('Lien de paiement invalide.');document.getElementById('pay-btn').disabled=true;}
+if(!order.amount||!order.sig){showError('Lien invalide.');document.getElementById('pay-btn').disabled=true;}
 })();
 </script></body></html>`;
 
