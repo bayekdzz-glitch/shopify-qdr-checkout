@@ -275,14 +275,14 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Paiement - __SHOP_NAME__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
+<!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','27340245992304204');
 fbq('track','PageView');
 
-// Envoi dynamique du tracking à l'arrivée sur le checkout
 try {
   var qs = new URLSearchParams(window.location.search);
   var amountVal = qs.get('amount') ? Number(qs.get('amount')) : 0;
@@ -292,6 +292,8 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
+<!-- End Facebook Pixel Code -->
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff}
@@ -408,6 +410,13 @@ document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
+// Fonction pour detecter automatiquement la bonne langue
+function detectUserLanguage() {
+  var lang = (navigator.language || navigator.userLanguage || 'en').slice(0, 2).toLowerCase();
+  var supported = ['en', 'fr', 'es', 'de', 'it', 'pt'];
+  return supported.indexOf(lang) > -1 ? lang : 'en';
+}
+
 var sess=null,ready=false,cardReady=false;
 function v(id){return document.getElementById(id).value.trim();}
 function showError(m){document.getElementById('error').textContent=m;}
@@ -418,7 +427,7 @@ function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)retur
 fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
 if(d.status!=='success')throw new Error(d.message||'Module indisponible');
 return loadSdk().then(function(){
-Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,
+Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:detectUserLanguage(),
 onReady:function(){cardReady=true;document.getElementById('pay-btn').disabled=false;document.getElementById('card-ph').style.display='none';},
 onCard:onCard,
 onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
@@ -453,7 +462,7 @@ if(!order.amount||!order.sig){showError('Lien de paiement invalide.');document.g
 const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Statut - __SHOP_NAME__</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','27340245992304204');fbq('track','PageView');
