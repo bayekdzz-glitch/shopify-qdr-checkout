@@ -433,7 +433,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon">🔄</span><span id="lang-t2">Retours gratuits sous 30 jours</span></div>
-      <div class="trust-item"><span class="trust-icon">📦</span><span id="lang-t3">Expédition sous 24-48h ouvrées</span></div>
+      <div class="trust-item"><span class="trust-icon">📦</span><span id="lang-t3">Livraison immédiate après achat</span></div>
       <div class="trust-item"><span class="trust-icon">💬</span><span id="lang-t4">Support client 7j/7</span></div>
     </div>
   </div>
