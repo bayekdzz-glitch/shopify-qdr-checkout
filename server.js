@@ -409,7 +409,7 @@ function loadSdk(){return new Promise(function(res,rej){if(window.Checkout)retur
 fetch('/api/sdk').then(function(r){return r.json();}).then(function(d){
 if(d.status!=='success')throw new Error(d.message||'Module indisponible');
 return loadSdk().then(function(){
-Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,
+Checkout.init({containerId:'card-container',team_id:d.team_id,app_id:d.app_id,language:(function(){var S=['en','fr','es','de','it','pt'];var p=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||'en'];for(var i=0;i<p.length;i++){var c=p[i].toLowerCase().split('-')[0];if(S.indexOf(c)!==-1)return c;}return'en';})(),
 onReady:function(){cardReady=true;document.getElementById('pay-btn').disabled=false;document.getElementById('card-ph').style.display='none';},
 onCard:onCard,
 onError:function(e){setPay(false);showError(e.message||'Erreur carte');}});
