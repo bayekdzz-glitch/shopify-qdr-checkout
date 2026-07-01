@@ -280,7 +280,7 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','27340245992304204');
+fbq('init','1405300981421901');
 fbq('track','PageView');
 
 try {
@@ -291,7 +291,7 @@ try {
   fbq('track', 'InitiateCheckout', { value: amountVal, currency: currencyVal });
 } catch(e){}
 </script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
 <!-- End Facebook Pixel Code -->
 
 <style>
@@ -390,7 +390,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
-        <div class="ship-box-left"><span class="ship-icon">🚚</span><div class="ship-details"><span class="ship-name">__SHIPPING__</span></div></div>
+        <div class="ship-box-left"><span class="ship-icon">🎟️</span><div class="ship-details"><span class="ship-name">__SHIPPING__</span></div></div>
         <span class="ship-price" id="lang-free1">Gratuit</span>
       </div>
     </div>
@@ -429,11 +429,11 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance -->
+    <!-- Réassurance Adaptée (Billets / E-tickets) -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
-      <div class="trust-item"><span class="trust-icon">🔄</span><span id="lang-t2">Assurance Offerte</span></div>
-      <div class="trust-item"><span class="trust-icon">🎟️</span><span id="lang-t3">Livraison immédiate après achat</span></div>
+      <div class="trust-item"><span class="trust-icon">⚡</span><span id="lang-t2">Livraison instantanée par e-mail</span></div>
+      <div class="trust-item"><span class="trust-icon">🎟️</span><span id="lang-t3">Billets officiels 100% garantis</span></div>
       <div class="trust-item"><span class="trust-icon">💬</span><span id="lang-t4">Support client 7j/7</span></div>
     </div>
   </div>
@@ -463,10 +463,10 @@ document.getElementById('sum-items').innerHTML=html;
 renderItems();
 
 var translations = {
-  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Retours gratuits sous 30 jours", t3: "Expédition sous 24-48h ouvrées", t4: "Support client 7j/7" },
-  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Resi gratuiti entro 30 giorni", t3: "Spedizione in 24-48 ore lavorative", t4: "Supporto clienti 7 giorni su 7" },
-  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Devoluciones gratuitas en 30 días", t3: "Envío en 24-48h laborables", t4: "Soporte al cliente 7d/7" },
-  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "Kostenlose Rückgabe innerhalb von 30 Tagen", t3: "Versand innerhalb von 24-48 Werktagen", t4: "Kundenservice 7 Tage die Woche" }
+  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Livraison instantanée par e-mail", t3: "Billets officiels 100% garantis", t4: "Support client 7j/7" },
+  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Consegna istantanea via e-mail", t3: "Biglietti ufficiali garantiti al 100%", t4: "Supporto clienti 7 giorni su 7" },
+  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Entrega instantánea por correo electrónico", t3: "Boletos oficiales 100% garantizados", t4: "Soporte al cliente 7d/7" },
+  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "Sofortige Lieferung per E-Mail", t3: "100% garantierte offizielle Tickets", t4: "Kundenservice 7 Tage die Woche" }
 };
 
 function detectUserLanguage() {
@@ -532,8 +532,9 @@ onError:function(e){setPay(false);showError(e.message||'Error');}});
 }).catch(function(e){document.getElementById('card-ph').textContent='…';});
 
 function onCard(cd){
+var shopNameParam = order.shop ? '&shop=' + encodeURIComponent(order.shop) : '';
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
-.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+(order.shop?('&shop='+encodeURIComponent(order.shop)):'');})
+.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+shopNameParam;})
 .catch(function(e){setPay(false);showError(e.message);});
 }
 
@@ -562,9 +563,10 @@ const RETURN_HTML = `<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','27340245992304204');fbq('track','PageView');
+fbq('init','1405300981421901');
+fbq('track','PageView');
 </script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=27340245992304204&ev=PageView&noscript=1"/></noscript>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
 <style>
 body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a;margin:0;padding:20px}
 .card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:40px;max-width:460px;width:100%;text-align:center;box-sizing:border-box}
@@ -612,7 +614,7 @@ function showUpsell(d){
   document.getElementById('up-ref').textContent=fmt(d.upsellRef);
   document.getElementById('up-save').textContent='Économisez '+fmt(d.upsellSave);
   offer.style.display='block';
-  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmé.','ok');};
+  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmed.','ok');};
   document.getElementById('up-yes').onclick=function(){
     var y=document.getElementById('up-yes');y.disabled=true;y.textContent='Traitement…';
     fetch('/api/upsell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({txn:txn})})
