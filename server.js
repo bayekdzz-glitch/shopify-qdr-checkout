@@ -16,10 +16,6 @@ const {
 const MOCK = String(MOCK_MODE).toLowerCase() === "true";
 const QDR_CURRENCY = String(process.env.QDR_CURRENCY || "USD").toUpperCase();
 
-const UPSELL_AMOUNT = Number(process.env.UPSELL_AMOUNT || 39.99);
-const UPSELL_REF_PRICE = Number(process.env.UPSELL_REF_PRICE || 69.99);
-const UPSELL_SAVE = (UPSELL_REF_PRICE - UPSELL_AMOUNT).toFixed(2);
-
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -91,12 +87,10 @@ app.get("/start", (req, res) => {
 app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
-  const isEvent = /rock|event|billet|ticket/i.test(req.query.shop || "");
   const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
   
-  // On nettoie la chaîne reçue pour éviter de doubler les émojis
-  let shipping = shipParam || (isEvent ? "E-Ticket · Livraison immédiate" : "Livraison en 2 jours ouvrés · Suivi inclus");
-  shipping = shipping.replace(/[🎟️🚚]/g, "").trim();
+  // On élimine totalement les emojis envoyés par Shopify à la source
+  const shipping = shipParam.replace(/[🎟️🚚]/g, "").trim() || "E-Ticket · Livraison immédiate";
 
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
@@ -220,44 +214,7 @@ app.post("/api/webhook", async (req, res) => {
 app.get("/api/status", (req, res) => {
   const txn = transactions.get(req.query.txn);
   if (!txn) return res.status(404).json({ status: "unknown" });
-  res.json({
-    status: txn.status, amount: txn.amount, currency: txn.currency,
-    upsell: !!txn.billToken && !txn.upsellDone && (!txn.shop || /coziya/i.test(txn.shop)),
-    upsellDone: !!txn.upsellDone,
-    upsellAmount: UPSELL_AMOUNT, upsellSave: UPSELL_SAVE, upsellRef: UPSELL_REF_PRICE,
-  });
-});
-
-app.post("/api/upsell", async (req, res) => {
-  try {
-    const id = (req.body || {}).txn;
-    const txn = transactions.get(id);
-    if (!txn) return res.status(404).json({ status: "error", message: "Transaction inconnue." });
-    const ok = ["success", "approved", "completed", "paid"].includes(String(txn.status || "").toLowerCase());
-    if (!ok) return res.status(400).json({ status: "error", message: "Paiement initial non confirme." });
-    if (!txn.billToken) return res.status(400).json({ status: "error", message: "Carte non reutilisable (token absent)." });
-    if (txn.upsellDone) return res.json({ status: "success", message: "Deja ajoute." });
-    const c = txn.customer || {};
-    const body = {
-      merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
-      amount: UPSELL_AMOUNT.toFixed(2), currency: QDR_CURRENCY,
-      first_name: c.first_name || "", last_name: c.last_name || "",
-      country: c.country || "", user_email: c.email || "",
-      address: c.address || "", city: c.city || "", state: c.state || "", zip: c.zip || "",
-      token: txn.billToken,
-      transaction_unique_id: crypto.randomUUID(),
-      user_ip: txn.userIp || req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip,
-    };
-    const data = await callQdr("/v2/cc/sale/token", body);
-    const s = String(data.status || "").toLowerCase();
-    const okPay = s === "success" || s === "approved" || data.code === 0
-      || (data.payload && String(data.payload.transaction_status || "").toUpperCase() === "SUCCESS");
-    if (okPay) {
-      txn.upsellDone = true; transactions.set(id, txn);
-      return res.json({ status: "success", message: "Upsell debite." });
-    }
-    return res.status(502).json({ status: "error", message: data.message || "Upsell refuse.", raw: data });
-  } catch (e) { console.error("upsell error", e); res.status(500).json({ status: "error", message: e.message }); }
+  res.json({ status: txn.status, amount: txn.amount, currency: txn.currency });
 });
 
 app.listen(PORT, () => {
@@ -279,6 +236,7 @@ const CHECKOUT_HTML = `<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
+<!-- Facebook Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','1405300981421901');
@@ -293,6 +251,8 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
+<!-- End Facebook Pixel Code -->
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
@@ -358,6 +318,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 
 <div class="wrap">
   <div class="col-form">
+    <!-- 1. Coordonnées -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
       <div class="form-group">
@@ -366,6 +327,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 2. Adresse de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
       <div class="row-grid">
@@ -383,6 +345,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 3. Mode de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
@@ -391,6 +354,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 4. Informations de paiement -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
       <div class="card-brands-row">
@@ -408,6 +372,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
   </div>
 
   <div class="col-sum">
+    <!-- Récapitulatif -->
     <div class="sum-box">
       <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
       <div id="sum-items"></div>
@@ -423,6 +388,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- Réassurance Adaptée (Billets / E-tickets) -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon" id="lang-t1-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Livraison instantanée par e-mail</span></div>
@@ -455,6 +421,7 @@ document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
+// Dictionnaire 100% fixe sans emojis injectés à double
 var translations = {
   fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
   it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
@@ -506,9 +473,10 @@ if (t) {
   document.getElementById('lang-t3').textContent = t.t3;
   document.getElementById('lang-t4').textContent = t.t4;
   
-  // Nettoyage forcé pour n'afficher qu'un seul émoji propre dans la boîte de livraison
-  var cleanShipStr = (qs.get('ship') || t.shipDisplay).replace(/[🎟️🚚]/g, "").trim();
-  document.getElementById('lang-ship-display').textContent = cleanShipStr;
+  // On écrase à 100% le contenu et on nettoie les emojis envoyés de l'URL pour ne laisser que le texte propre
+  var rawShip = qs.get('ship') || t.shipDisplay;
+  var finalCleanShip = rawShip.replace(/[🎟️🚚]/g, "").trim();
+  document.getElementById('lang-ship-display').textContent = finalCleanShip;
 }
 
 var sess=null,ready=false,cardReady=false;
