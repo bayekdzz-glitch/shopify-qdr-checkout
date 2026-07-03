@@ -88,11 +88,17 @@ app.get("/checkout", (req, res) => {
 
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
+  
   const logoRaw = req.query.logo ? String(req.query.logo).trim() : "";
-  const logo = /^https:\/\/[^\s"'<>]+$/i.test(logoRaw) ? logoRaw.slice(0, 400) : "";
-  const brandBlock = logo
-    ? `<img class="shoplogo" src="${logo}" alt="${heading}"/>`
+  const isValidLogo = /^https:\/\/[^\s"'<>]+$/i.test(logoRaw) && 
+                      !logoRaw.includes('ton-site.com') && 
+                      !logoRaw.includes('logo-ici') &&
+                      logoRaw.length > 10;
+
+  const brandBlock = isValidLogo
+    ? `<img class="shoplogo" src="${logoRaw.slice(0, 400)}" alt="${heading}"/>`
     : `<div class="logo-circle">${heading.slice(0,1).toUpperCase()}</div><span class="shop-name-text">${heading}</span>`;
+
   res.type("html").send(CHECKOUT_HTML
     .replace(/__BRAND_BLOCK__/g, brandBlock)
     .replace(/__SHOP_NAME__/g, heading)
@@ -228,7 +234,7 @@ app.listen(PORT, () => {
 });
 
 const COUNTRY_OPTIONS = [
-  ["FRA","France"],["BEL","Belgique"],["CHE","Suisse"],["LUX","Luxembourg"],["MCO","Monaco"],
+  ["FRA","France"],["BEL","Belgique"],["CHE","Suisse"],["LUX","LUXembourg"],["MCO","Monaco"],
   ["CAN","Canada"],["DEU","Allemagne"],["ESP","Espagne"],["ITA","Italie"],["PRT","Portugal"],
   ["NLD","Pays-Bas"],["GBR","Royaume-Uni"],["IRL","Irlande"],["USA","Etats-Unis"],["AUT","Autriche"],
   ["POL","Pologne"],["SWE","Suede"],["DNK","Danemark"],["NOR","Norvege"],["FIN","Finlande"],
@@ -394,7 +400,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance Adaptée (Billets / E-tickets) -->
+    <!-- Réassurance Adaptée -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon" id="lang-t1-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Livraison instantanée par e-mail</span></div>
