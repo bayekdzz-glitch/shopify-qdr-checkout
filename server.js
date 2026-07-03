@@ -8,7 +8,7 @@ const {
   QDR_SDK_URL = "https://api.qdr6wy.im/js/checkout.js",
   PUBLIC_BASE_URL = "http://localhost:3000",
   CHECKOUT_SIGNING_SECRET = "dev-secret",
-  SHOP_NAME = "COZIYA®",
+  SHOP_NAME = "Arena Core",
   PORT = 3000,
   MOCK_MODE = "false",
 } = process.env;
@@ -181,7 +181,6 @@ app.post("/api/complete", async (req, res) => {
     const data = await callQdr("/v2/cc/sale3d/complete", {
       session_token, card_token, encrypted_cvv, bin, last4, card_holder, card_exp_month, card_exp_year });
     
-    // Sécurité : On stocke la réponse brute ou le code pour pallier les variations réelles de QDR
     txn.status = data.status || "unknown";
     txn.code = data.code;
     if (data.payload && data.payload.transaction_status) {
@@ -499,7 +498,7 @@ onError:function(e){setPay(false);showError(e.message||'Error');}});
 
 function onCard(cd){
 var shopNameParam = order.shop ? '&shop=' + encodeURIComponent(order.shop) : '';
-fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
+fetch('/api/complete',{method:'POST',headers:'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
 .then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+shopNameParam;})
 .catch(function(e){setPay(false);showError(e.message);});
 }
@@ -548,6 +547,7 @@ p{color:#4a5568;font-size:15px;margin:8px 0;line-height:1.6}
   <div class="success-icon" id="success-icon">✅</div>
   <h1 id="title">Vérification de votre commande…</h1>
   <p id="msg">Merci de patienter pendant la validation du paiement.</p>
+  <div id="fb-fallback"></div>
 </div>
 <script>
 (function(){
@@ -564,9 +564,16 @@ var s=(d.status||'').toLowerCase();
 var ts=(d.transactionStatus||'').toLowerCase();
 var code=parseInt(d.code, 10);
 
-// NOUVELLE VÉRIFICATION ÉLARGIE : On valide si le statut API, le code ou le statut transaction est positif
 if(['success','approved','completed','paid'].includes(s) || ts==='success' || ts==='approved' || code===0){
   try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}
+  
+  try {
+    var fallbackImg = document.createElement('img');
+    fallbackImg.height = 1; fallbackImg.width = 1; fallbackImg.style.display = 'none';
+    fallbackImg.src = 'https://www.facebook.com/tr?id=1405300981421901&ev=Purchase&cd[value]=' + (d.amount || 0) + '&cd[currency]=EUR&noscript=1';
+    document.getElementById('fb-fallback').appendChild(fallbackImg);
+  } catch(e){}
+
   return done('Commande confirmée ! 🎉','Votre paiement a été validé avec succès.<br><br><b>🎟️ Vos E-Tickets viennent de vous être envoyés par e-mail.</b> Checkez vos spams si besoin !','ok',true);
 }
 if(['declined','failed','error','rejected'].includes(s) || ts==='declined' || ts==='failed') return done('Paiement refusé ❌','La transaction n\\'a pas abouti. Veuillez réessayer avec un autre moyen de paiement.','ko',false);
