@@ -61,10 +61,6 @@ function mockQdr(pathname) {
     return { status: "success", code: 0, message: "success (mock)",
       token: crypto.randomUUID() + crypto.randomUUID().slice(0, 4) };
   }
-  if (pathname.endsWith("/sale/token")) {
-    return { status: "success", code: 0, message: "success (mock)",
-      payload: { transaction_status: "SUCCESS", token: crypto.randomUUID() } };
-  }
   return { status: "error", message: "mock: route inconnue" };
 }
 
@@ -87,10 +83,8 @@ app.get("/start", (req, res) => {
 app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
-  const shipParam = req.query.ship ? String(req.query.ship).replace(/[<>"`]/g, "").slice(0, 80) : "";
-  
-  // On élimine totalement les emojis envoyés par Shopify à la source
-  const shipping = shipParam.replace(/[🎟️🚚]/g, "").trim() || "E-Ticket · Livraison immédiate";
+  const shipParam = req.query.ship ? String(req.query.ship).trim() : "";
+  const shipping = shipParam || "🎟️ E-Ticket · Livraison immédiate";
 
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
@@ -187,8 +181,6 @@ app.post("/api/complete", async (req, res) => {
     const data = await callQdr("/v2/cc/sale3d/complete", {
       session_token, card_token, encrypted_cvv, bin, last4, card_holder, card_exp_month, card_exp_year });
     txn.status = data.status || "unknown";
-    const bt = data.token || (data.payload && data.payload.token) || data.bill_token || null;
-    if (bt) txn.billToken = bt;
     transactions.set(transaction_unique_id, txn);
     const acsUrl = data.acs_url || data.acsUrl || data.redirect || (data.payload && data.payload.acs_url);
     res.json({ status: data.status, code: data.code, message: data.message, acs_url: acsUrl || null });
@@ -198,13 +190,10 @@ app.post("/api/complete", async (req, res) => {
 app.post("/api/webhook", async (req, res) => {
   try {
     const payload = req.body || {};
-    console.log("WEBHOOK qdr6wy:", JSON.stringify(payload));
     const id = payload.transaction_unique_id || payload.transactionUniqueId;
     const txn = id ? transactions.get(id) : null;
     if (txn) {
       txn.status = payload.status || txn.status;
-      const bt = payload.token || (payload.payload && payload.payload.token) || payload.bill_token || null;
-      if (bt) txn.billToken = bt;
       transactions.set(id, txn);
     }
     res.json({ received: true });
@@ -421,11 +410,10 @@ document.getElementById('sum-items').innerHTML=html;
 }
 renderItems();
 
-// Dictionnaire 100% fixe sans emojis injectés à double
 var translations = {
   fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
-  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carta", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
-  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Titular de la tarjeta", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Boletos oficiales 100% garantizados", t3: "Entrega instantánea por correo electrónico", t4: "Soporte al cliente 7d/7", shipDisplay: "E-Ticket · Entrega inmediata" },
+  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carte", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
+  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Tarjeta de crédito", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Boletos oficiais 100% garantizados", t3: "Entrega instantánea por correo electrónico", t4: "Soporte al cliente 7d/7", shipDisplay: "E-Ticket · Entrega inmediata" },
   de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "100% garantierte offizielle Tickets", t3: "Sofortige Lieferung per E-Mail", t4: "Kundenservice 7 Tage die Woche", shipDisplay: "E-Ticket · Sofortige Lieferung" }
 };
 
@@ -473,7 +461,6 @@ if (t) {
   document.getElementById('lang-t3').textContent = t.t3;
   document.getElementById('lang-t4').textContent = t.t4;
   
-  // On écrase à 100% le contenu et on nettoie les emojis envoyés de l'URL pour ne laisser que le texte propre
   var rawShip = qs.get('ship') || t.shipDisplay;
   var finalCleanShip = rawShip.replace(/[🎟️🚚]/g, "").trim();
   document.getElementById('lang-ship-display').textContent = finalCleanShip;
@@ -524,7 +511,7 @@ if(!order.amount||!order.sig){showError('Lien invalide.');document.getElementByI
 
 const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Statut - __SHOP_NAME__</title>
+<title>Confirmation - __SHOP_NAME__</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
@@ -533,69 +520,39 @@ fbq('track','PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
 <style>
-body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a1a1a;margin:0;padding:20px}
-.card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:40px;max-width:460px;width:100%;text-align:center;box-sizing:border-box}
-h1{font-size:20px;margin:0 0 10px}p{color:#6b7280;font-size:14px;margin:6px 0}
-.ok{color:#108043}.ko{color:#d82c0d}.pending{color:#2563eb}
-.spinner{width:30px;height:30px;border:3px solid #e6e6e6;border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 18px}
+body{font-family:'Inter',system-ui,sans-serif;background:#f7fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1a202c;margin:0;padding:20px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:40px;max-width:480px;width:100%;text-align:center;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05)}
+h1{font-size:22px;font-weight:700;margin:0 0 12px}
+p{color:#4a5568;font-size:15px;margin:8px 0;line-height:1.6}
+.ok{color:#10b981}.ko{color:#ef4444}.pending{color:#3b82f6}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.offer{display:none;margin-top:22px;border:2px dashed #2563eb;border-radius:14px;padding:22px;background:#f5f8ff;text-align:left}
-.offer .tag{display:inline-block;background:#2563eb;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;letter-spacing:.4px}
-.offer h2{font-size:18px;margin:12px 0 6px}
-.offer .price{font-size:26px;font-weight:700;color:#1a1a1a}
-.offer .price s{font-size:16px;color:#9aa1ab;font-weight:500;margin-left:8px}
-.offer .save{display:inline-block;background:#e7f6ec;color:#108043;font-weight:600;font-size:13px;padding:3px 10px;border-radius:6px;margin-top:6px}
-.offer .sub{color:#6b7280;font-size:13px;margin:10px 0 16px}
-.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:15px;border-radius:10px;font-weight:600;font-size:15px;border:none;cursor:pointer;margin-top:10px}
-.btn-yes{background:#2563eb;color:#fff}
-.btn-no{background:transparent;color:#6b7280;text-decoration:underline;font-weight:500;font-size:13px;padding:8px}
-.btn[disabled]{opacity:.6;cursor:default}
+.success-icon{font-size:48px;margin-bottom:16px;display:none}
 </style></head><body>
 <div class="card">
   <div class="spinner" id="spinner"></div>
-  <h1 id="title">Verification du paiement…</h1>
-  <p id="msg">Merci de patienter.</p>
-  <div class="offer" id="offer">
-    <span class="tag">OFFRE UNIQUE — RIEN QUE POUR VOUS</span>
-    <h2>Ajoutez un 2ᵉ matelas Coziya 🛏️</h2>
-    <div class="price"><span id="up-price">39,99€</span> <s id="up-ref">69,99€</s></div>
-    <span class="save" id="up-save">Économisez 30€</span>
-    <p class="sub">Cette offre n'apparaît qu'ici et disparaît si vous quittez la page.</p>
-    <button class="btn btn-yes" id="up-yes">✅ Oui, j'en profite</button>
-    <button class="btn btn-no" id="up-no">Non merci, continuer</button>
-  </div>
+  <div class="success-icon" id="success-icon">✅</div>
+  <h1 id="title">Vérification de votre commande…</h1>
+  <p id="msg">Merci de patienter pendant la validation du paiement.</p>
 </div>
 <script>
 (function(){
 var txn=new URLSearchParams(location.search).get('txn');
-var title=document.getElementById('title'),msg=document.getElementById('msg'),spinner=document.getElementById('spinner'),offer=document.getElementById('offer'),tries=0;
-function fmt(n){return (Number(n).toFixed(2)).replace('.',',')+'€';}
-function done(t,m,cls){spinner.style.display='none';offer.style.display='none';title.textContent=t;title.className=cls;msg.textContent=m;}
-function showUpsell(d){
+var title=document.getElementById('title'),msg=document.getElementById('msg'),spinner=document.getElementById('spinner'),icon=document.getElementById('success-icon'),tries=0;
+function done(t,m,cls,showCheck){
   spinner.style.display='none';
-  title.textContent='Paiement réussi ✅';title.className='ok';
-  msg.textContent='Votre commande est confirmée. Merci !';
-  document.getElementById('up-price').textContent=fmt(d.upsellAmount);
-  document.getElementById('up-ref').textContent=fmt(d.upsellRef);
-  document.getElementById('up-save').textContent='Économisez '+fmt(d.upsellSave);
-  offer.style.display='block';
-  document.getElementById('up-no').onclick=function(){done('Merci pour votre commande !','Votre paiement est confirmed.','ok');};
-  document.getElementById('up-yes').onclick=function(){
-    var y=document.getElementById('up-yes');y.disabled=true;y.textContent='Traitement…';
-    fetch('/api/upsell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({txn:txn})})
-    .then(function(r){return r.json();}).then(function(rr){
-      if(rr.status==='success'){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.upsellAmount)||0,currency:d.currency||'EUR'});}catch(e){}
-        done('C\\'est ajouté ! 🎉','Votre 2ᵉ matelas a été ajouté à votre commande. Merci !','ok');}
-      else{y.disabled=false;y.textContent='✅ Oui, j\\'en profite';msg.textContent='Offre indisponible pour le moment.';}
-    }).catch(function(){y.disabled=false;y.textContent='✅ Oui, j\\'en profite';msg.textContent='Une erreur est survenue, réessayez.';});
-  };
+  if(showCheck) icon.style.display='block';
+  title.textContent=t;title.className=cls;msg.innerHTML=m;
 }
-function poll(){if(!txn){return done('Reference manquante','Impossible de retrouver la transaction.','ko');}
+function poll(){if(!txn){return done('Référence manquante','Impossible de valider la transaction. Merci de contacter le support.','ko',false);}
 fetch('/api/status?txn='+encodeURIComponent(txn)).then(function(r){return r.json();}).then(function(d){
 var s=(d.status||'').toLowerCase();
-if(['success','approved','completed','paid'].includes(s)){try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}if(d.upsell){return showUpsell(d);}return done('Paiement réussi','Votre commande est confirmée. Merci !','ok');}
-if(['declined','failed','error','rejected'].includes(s))return done('Paiement refusé','La transaction n a pas abouti.','ko');
-tries++;if(tries>20)return done('En cours de traitement','Vous recevrez une confirmation par email.','pending');
+if(['success','approved','completed','paid'].includes(s)){
+  try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}
+  return done('Commande confirmée ! 🎉','Votre paiement a été validé avec succès.<br><br><b>🎟️ Vos E-Tickets viennent de vous être envoyés par e-mail.</b> Checkez vos spams si besoin !','ok',true);
+}
+if(['declined','failed','error','rejected'].includes(s))return done('Paiement refusé ❌','La transaction n\\'a pas abouti. Veuillez réessayer avec un autre moyen de paiement.','ko',false);
+tries++;if(tries>25)return done('Traitement en cours…','Votre paiement prend un peu de temps à être validé. Vous recevrez vos billets par e-mail dès confirmation.','pending',false);
 setTimeout(poll,2000);}).catch(function(){setTimeout(poll,2000);});}
 poll();
 })();
