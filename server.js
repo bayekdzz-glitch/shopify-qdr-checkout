@@ -8,7 +8,7 @@ const {
   QDR_SDK_URL = "https://api.qdr6wy.im/js/checkout.js",
   PUBLIC_BASE_URL = "http://localhost:3000",
   CHECKOUT_SIGNING_SECRET = "dev-secret",
-  SHOP_NAME = "Arena Core",
+  SHOP_NAME = "COZIYA®",
   PORT = 3000,
   MOCK_MODE = "false",
 } = process.env;
@@ -180,8 +180,15 @@ app.post("/api/complete", async (req, res) => {
     if (!txn) return res.status(404).json({ status: "error", message: "Transaction inconnue/expiree." });
     const data = await callQdr("/v2/cc/sale3d/complete", {
       session_token, card_token, encrypted_cvv, bin, last4, card_holder, card_exp_month, card_exp_year });
+    
+    // Sécurité : On stocke la réponse brute ou le code pour pallier les variations réelles de QDR
     txn.status = data.status || "unknown";
+    txn.code = data.code;
+    if (data.payload && data.payload.transaction_status) {
+      txn.transactionStatus = data.payload.transaction_status;
+    }
     transactions.set(transaction_unique_id, txn);
+    
     const acsUrl = data.acs_url || data.acsUrl || data.redirect || (data.payload && data.payload.acs_url);
     res.json({ status: data.status, code: data.code, message: data.message, acs_url: acsUrl || null });
   } catch (e) { console.error("complete error", e); res.status(500).json({ status: "error", message: e.message }); }
@@ -194,6 +201,7 @@ app.post("/api/webhook", async (req, res) => {
     const txn = id ? transactions.get(id) : null;
     if (txn) {
       txn.status = payload.status || txn.status;
+      if (payload.code !== undefined) txn.code = payload.code;
       transactions.set(id, txn);
     }
     res.json({ received: true });
@@ -203,7 +211,13 @@ app.post("/api/webhook", async (req, res) => {
 app.get("/api/status", (req, res) => {
   const txn = transactions.get(req.query.txn);
   if (!txn) return res.status(404).json({ status: "unknown" });
-  res.json({ status: txn.status, amount: txn.amount, currency: txn.currency });
+  res.json({ 
+    status: txn.status, 
+    code: txn.code,
+    transactionStatus: txn.transactionStatus || "",
+    amount: txn.amount, 
+    currency: txn.currency 
+  });
 });
 
 app.listen(PORT, () => {
@@ -412,7 +426,7 @@ renderItems();
 
 var translations = {
   fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
-  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare della carte", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
+  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare de la carte", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
   es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Tarjeta de crédito", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Boletos oficiais 100% garantizados", t3: "Entrega instantánea por correo electrónico", t4: "Soporte al cliente 7d/7", shipDisplay: "E-Ticket · Entrega inmediata" },
   de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Verschlüsselung", t2: "100% garantierte offizielle Tickets", t3: "Sofortige Lieferung per E-Mail", t4: "Kundenservice 7 Tage die Woche", shipDisplay: "E-Ticket · Sofortige Lieferung" }
 };
@@ -547,11 +561,15 @@ function done(t,m,cls,showCheck){
 function poll(){if(!txn){return done('Référence manquante','Impossible de valider la transaction. Merci de contacter le support.','ko',false);}
 fetch('/api/status?txn='+encodeURIComponent(txn)).then(function(r){return r.json();}).then(function(d){
 var s=(d.status||'').toLowerCase();
-if(['success','approved','completed','paid'].includes(s)){
+var ts=(d.transactionStatus||'').toLowerCase();
+var code=parseInt(d.code, 10);
+
+// NOUVELLE VÉRIFICATION ÉLARGIE : On valide si le statut API, le code ou le statut transaction est positif
+if(['success','approved','completed','paid'].includes(s) || ts==='success' || ts==='approved' || code===0){
   try{if(window.fbq)fbq('track','Purchase',{value:Number(d.amount)||0,currency:d.currency||'EUR'});}catch(e){}
   return done('Commande confirmée ! 🎉','Votre paiement a été validé avec succès.<br><br><b>🎟️ Vos E-Tickets viennent de vous être envoyés par e-mail.</b> Checkez vos spams si besoin !','ok',true);
 }
-if(['declined','failed','error','rejected'].includes(s))return done('Paiement refusé ❌','La transaction n\\'a pas abouti. Veuillez réessayer avec un autre moyen de paiement.','ko',false);
+if(['declined','failed','error','rejected'].includes(s) || ts==='declined' || ts==='failed') return done('Paiement refusé ❌','La transaction n\\'a pas abouti. Veuillez réessayer avec un autre moyen de paiement.','ko',false);
 tries++;if(tries>25)return done('Traitement en cours…','Votre paiement prend un peu de temps à être validé. Vous recevrez vos billets par e-mail dès confirmation.','pending',false);
 setTimeout(poll,2000);}).catch(function(){setTimeout(poll,2000);});}
 poll();
