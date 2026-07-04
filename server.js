@@ -170,7 +170,7 @@ app.post("/api/init", async (req, res) => {
     const c = customer || {};
     const initBody = {
       merchant_account: MERCHANT_ACCOUNT, merchant_password: MERCHANT_PASSWORD,
-      transaction_unique_id, amount: Number(amount), currency: QDR_CURRENCY, 
+      transaction_unique_id, amount: Number(amount), currency: QDR_CURRENCY, // Envoyé en USD brut
       first_name: c.first_name || "", last_name: c.last_name || "", address: c.address || "",
       city: c.city || "", state: c.state || "", zip: c.zip || "", country: c.country || "FRA",
       user_phone: c.phone || "", user_email: c.email || "",
@@ -191,7 +191,7 @@ app.post("/api/init", async (req, res) => {
     }
 
     transactions.set(transaction_unique_id, {
-      orderRef: order_ref, amount: Number(amount), currency: "EUR", status: "initiated", 
+      orderRef: order_ref, amount: Number(amount), currency: "EUR", status: "initiated", // On garde "EUR" pour l'affichage final
       sessionToken: data.payload.session_token,
       productTitle: productTitle,
       upsellAccepted: false,
@@ -249,7 +249,7 @@ app.post("/api/upsell/submit", async (req, res) => {
       merchant_password: MERCHANT_PASSWORD,
       transaction_unique_id: "up-" + crypto.randomUUID(),
       amount: "39.99",
-      currency: "USD", 
+      currency: "USD", // On demande 39,99 Dollars bruts à la banque
       token: txn.billToken,
       first_name: txn.customer.first_name || "Client",
       last_name: txn.customer.last_name || "Client",
@@ -264,7 +264,7 @@ app.post("/api/upsell/submit", async (req, res) => {
     
     if (s === "success" || ts === "success" || data.code === 0) {
       txn.upsellAccepted = true;
-      txn.amount = Number(txn.amount) + 39.99; 
+      txn.amount = Number(txn.amount) + 39.99; // Ajout comptable pour l'affichage EUR du pixel
       transactions.set(transaction_unique_id, txn);
       return res.json({ status: "success" });
     }
@@ -345,10 +345,10 @@ try {
 body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;line-height:1.5}
 .topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .topbar-in{max-width:1140px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
-.logo-area{display:flex;align-items:center;gap:12px;width:100%}
+.logo-area{display:flex;align-items:center;gap:12px}
 .logo-circle{width:36px;height:36px;background:#3b82f6;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
 .shop-name-text{font-size:18px;font-weight:700;color:#1a202c}
-.shoplogo{max-height:65px;width:auto;display:block;margin:0 auto}
+.shoplogo{max-height:36px;width:auto;display:block}
 .secure-badge-top{margin-left:auto;color:#a0aec0;font-size:13px;display:flex;align-items:center;gap:6px}
 .wrap{max-width:1140px;margin:0 auto;display:flex;flex-wrap:wrap;padding:24px;gap:24px}
 .col-form{flex:1 1 640px;display:flex;flex-direction:column;gap:20px}
@@ -401,10 +401,11 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 .error-msg{color:#e53e3e;font-size:13px;font-weight:500;margin-top:10px;min-height:18px}
 </style></head><body>
 
-<div class="topbar"><div class="topbar-in"><div class="logo-area">__BRAND_BLOCK__</div></div></div>
+<div class="topbar"><div class="topbar-in"><div class="logo-area">__BRAND_BLOCK__</div><div class="secure-badge-top">🔒 <span id="lang-sec-top">Paiement sécurisé</span></div></div></div>
 
 <div class="wrap">
   <div class="col-form">
+    <!-- 1. Coordonnées -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">1</div><h2 id="lang-block1">Coordonnées</h2></div>
       <div class="form-group">
@@ -413,6 +414,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 2. Adresse de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">2</div><h2 id="lang-block2">Adresse de livraison</h2></div>
       <div class="row-grid">
@@ -430,6 +432,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 3. Mode de livraison -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
@@ -438,6 +441,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
       </div>
     </div>
 
+    <!-- 4. Informations de paiement -->
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">4</div><h2 id="lang-block4">Informations de paiement</h2></div>
       <div class="card-brands-row">
@@ -516,6 +520,7 @@ var translations = {
 var userLang = 'fr';
 var t = translations[userLang];
 if (t) {
+  document.getElementById('lang-sec-top').textContent = t.secTop;
   document.getElementById('lang-block1').textContent = t.b1;
   document.getElementById('lang-email').textContent = t.email;
   document.getElementById('lang-block2').textContent = t.b2;
