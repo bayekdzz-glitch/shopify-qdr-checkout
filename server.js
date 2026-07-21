@@ -24,6 +24,15 @@ app.use(express.urlencoded({ extended: true }));
 
 const transactions = new Map();
 
+// --- GESTION COMPATIBILITÉ API QDR (Format 1:1 et 1:many / transactions array) ---
+function getPayloadTransaction(payload) {
+  if (!payload) return null;
+  if (Array.isArray(payload.transactions)) {
+    return payload.transactions[0];
+  }
+  return payload;
+}
+
 function sign(payload) {
   return crypto.createHmac("sha256", CHECKOUT_SIGNING_SECRET).update(payload).digest("hex");
 }
@@ -149,7 +158,12 @@ async function getSdkIds() {
     callback_url: `${PUBLIC_BASE_URL}/api/webhook`, redirect_url: `${PUBLIC_BASE_URL}/return`,
   });
   if (data.status === "success" && data.payload) {
-    cachedSdk = { team_id: data.payload.team_id, app_id: data.payload.app_id };
+    const tx = getPayloadTransaction(data.payload);
+    if (tx) {
+      cachedSdk = { team_id: tx.team_id, app_id: tx.app_id };
+    } else {
+      cachedSdk = { team_id: data.payload.team_id, app_id: data.payload.app_id };
+    }
   }
   return cachedSdk;
 }
@@ -182,6 +196,8 @@ app.post("/api/init", async (req, res) => {
     if (data.status !== "success" || !data.payload)
       return res.status(502).json({ status: "error", message: data.message || "init a echoue", raw: data });
     
+    const payloadTx = getPayloadTransaction(data.payload);
+
     let productTitle = title || "Produit";
     if (req.body.items) {
       try {
@@ -192,7 +208,7 @@ app.post("/api/init", async (req, res) => {
 
     transactions.set(transaction_unique_id, {
       orderRef: order_ref, amount: Number(amount), currency: "EUR", status: "initiated", // On garde "EUR" pour l'affichage final
-      sessionToken: data.payload.session_token,
+      sessionToken: payloadTx ? payloadTx.session_token : data.payload.session_token,
       productTitle: productTitle,
       upsellAccepted: false,
       customer: {
@@ -204,13 +220,21 @@ app.post("/api/init", async (req, res) => {
       shop: shop || "",
     });
     res.json({ status: "success", transaction_unique_id,
-      session_token: data.payload.session_token, team_id: data.payload.team_id, app_id: data.payload.app_id });
+      session_token: payloadTx ? payloadTx.session_token : data.payload.session_token, 
+      team_id: payloadTx ? payloadTx.team_id : data.payload.team_id, 
+      app_id: payloadTx ? payloadTx.app_id : data.payload.app_id });
   } catch (e) { console.error("init error", e); res.status(500).json({ status: "error", message: e.message }); }
 });
 
 app.get("/api/bridge", (req, res) => {
   const { txn, shop } = req.query;
   res.redirect(`/upsell?txn=${encodeURIComponent(txn)}&shop=${encodeURIComponent(shop)}`);
+});
+
+// Correction pour accepter aussi le POST sur /api/bridge
+app.post("/api/bridge", (req, res) => {
+  const { txn, shop } = req.query || req.body;
+  res.redirect(`/upsell?txn=${encodeURIComponent(txn || '')}&shop=${encodeURIComponent(shop || '')}`);
 });
 
 app.post("/api/complete", async (req, res) => {
@@ -224,15 +248,17 @@ app.post("/api/complete", async (req, res) => {
     
     txn.status = data.status || "unknown";
     txn.code = data.code;
-    if (data.payload && data.payload.transaction_status) {
-      txn.transactionStatus = data.payload.transaction_status;
+    
+    const transaction = getPayloadTransaction(data.payload);
+    if (transaction && transaction.transaction_status) {
+      txn.transactionStatus = transaction.transaction_status;
     }
-    if (data.token || (data.payload && data.payload.token)) {
-      txn.billToken = data.token || data.payload.token;
+    if (data.token || (transaction && transaction.token)) {
+      txn.billToken = data.token || transaction.token;
     }
     transactions.set(transaction_unique_id, txn);
     
-    const acsUrl = data.acs_url || data.acsUrl || data.redirect || (data.payload && data.payload.acs_url);
+    const acsUrl = data.acs_url || data.acsUrl || data.redirect || (transaction && transaction.acs_url);
     res.json({ status: data.status, code: data.code, message: data.message, acs_url: acsUrl || null });
   } catch (e) { console.error("complete error", e); res.status(500).json({ status: "error", message: e.message }); }
 });
@@ -260,7 +286,9 @@ app.post("/api/upsell/submit", async (req, res) => {
 
     const data = await callQdr("/v2/cc/sale/token", tokenPayload);
     const s = (data.status || "").toLowerCase();
-    const ts = (data.payload && data.payload.transaction_status || "").toLowerCase();
+    
+    const transaction = getPayloadTransaction(data.payload);
+    const ts = (transaction && transaction.transaction_status || "").toLowerCase();
     
     if (s === "success" || ts === "success" || data.code === 0) {
       txn.upsellAccepted = true;
@@ -277,12 +305,14 @@ app.post("/api/upsell/submit", async (req, res) => {
 app.post("/api/webhook", async (req, res) => {
   try {
     const payload = req.body || {};
-    const id = payload.transaction_unique_id || payload.transactionUniqueId;
+    const transaction = getPayloadTransaction(payload);
+    const id = (transaction && (transaction.transaction_unique_id || transaction.reference)) || payload.transaction_unique_id || payload.transactionUniqueId;
     const txn = id ? transactions.get(id) : null;
     if (txn) {
       txn.status = payload.status || txn.status;
+      if (transaction && transaction.transaction_status) txn.transactionStatus = transaction.transaction_status;
       if (payload.code !== undefined) txn.code = payload.code;
-      if (payload.token) txn.billToken = payload.token;
+      if (transaction && transaction.token) txn.billToken = transaction.token;
       transactions.set(id, txn);
     }
     res.json({ received: true });
