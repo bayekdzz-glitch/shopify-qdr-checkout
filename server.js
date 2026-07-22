@@ -8,7 +8,7 @@ const {
   QDR_SDK_URL = "https://api.qdr6wy.im/js/checkout.js",
   PUBLIC_BASE_URL = "http://localhost:3000",
   CHECKOUT_SIGNING_SECRET = "dev-secret",
-  SHOP_NAME = "Shark Ninja",
+  SHOP_NAME = "",
   PORT = 3000,
   MOCK_MODE = "false",
 } = process.env;
