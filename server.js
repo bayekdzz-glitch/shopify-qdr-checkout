@@ -330,6 +330,58 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+// --- HANDLER FORMAT SHOPIFY PASSERELLE EXTERNE ---
+// Shopify redirige vers / avec ses propres params quand configuré comme gateway externe :
+// /?products=VARIANT_ID:QTY&cartId=TOKEN&key=KEY&x_amount=XX.XX&x_currency=EUR&x_reference=REF
+function handleShopifyRedirect(req, res) {
+  const q = { ...req.query, ...req.body };
+
+  // Tentative d'extraction du montant depuis les différents formats Shopify
+  const amount = q.x_amount || q.amount || q.total_price || q.total || null;
+  const currency = q.x_currency || q.currency || "EUR";
+  const orderRef = q.x_reference || q.order_ref || ("shopify-" + Date.now());
+  const shop = q.shop || SHOP_NAME;
+
+  if (amount) {
+    const sig = sign(buildSignedPayload({ amount, currency, orderRef }));
+    return res.redirect(
+      `/checkout?amount=${encodeURIComponent(amount)}`
+      + `&currency=${encodeURIComponent(currency)}`
+      + `&order_ref=${encodeURIComponent(orderRef)}`
+      + `&sig=${sig}`
+      + `&shop=${encodeURIComponent(shop)}`
+    );
+  }
+
+  // Pas de montant trouvé — afficher un message clair
+  res.status(400).type("html").send(`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Paiement — ${SHOP_NAME}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f7fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:40px;max-width:420px;width:100%;text-align:center}
+.icon{font-size:48px;margin-bottom:16px}
+h1{font-size:20px;font-weight:700;color:#1a202c;margin-bottom:10px}
+p{color:#718096;font-size:14px;line-height:1.6;margin-bottom:20px}
+.btn{display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none}
+.btn:hover{background:#2563eb}
+.note{margin-top:16px;font-size:12px;color:#a0aec0}
+</style></head><body>
+<div class="card">
+  <div class="icon">⚠️</div>
+  <h1>Lien de paiement incomplet</h1>
+  <p>Le montant n'a pas pu être récupéré automatiquement.<br/>Merci de passer par le bouton d'achat de la boutique.</p>
+  <a href="javascript:history.back()" class="btn">← Retour à la boutique</a>
+  <p class="note">Si le problème persiste, contactez le support.</p>
+</div>
+</body></html>`);
+}
+
+app.get("/", handleShopifyRedirect);
+app.post("/", handleShopifyRedirect);
+
 app.get("*", (req, res) => {
   res.status(404).send("Page introuvable.");
 });
